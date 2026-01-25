@@ -1,7 +1,7 @@
 import { readSession } from "./_auth.js";
 
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
+  if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
@@ -23,28 +23,19 @@ export default async function handler(req, res) {
     });
   }
 
-  // Nhận token từ FE (body)
-  const { tokenBXD, tokenBYT } = {
-    tokenBXD: localStorage.getItem("TOKEN_BXD") || "",
-    tokenBYT: localStorage.getItem("TOKEN_BYT") || "",
-  };
-  console.log("tokenBXD", tokenBXD);
-  console.log("tokenBYT", tokenBYT);
-  if (!tokenBXD || !tokenBYT) {
-    return res.status(401).json({ error: "Missing token", needToken: true });
-  }
-
-  const normalize = (t) => {
+  const normalizeBearer = (t) => {
     const v = String(t || "").trim();
     if (!v) return "";
     return v.toLowerCase().startsWith("bearer ") ? v : `Bearer ${v}`;
   };
 
-  const authBXD = normalize(tokenBXD);
-  const authBYT = normalize(tokenBYT);
+  // ✅ nhận token từ FE
+  const { tokenBXD, tokenBYT } = req.body || {};
+  const bxd = normalizeBearer(tokenBXD);
+  const byt = normalizeBearer(tokenBYT);
 
-  if (!authBXD || !authBYT) {
-    return res.status(401).json({ error: "Invalid token", needToken: true });
+  if (!bxd || !byt) {
+    return res.status(401).json({ error: "Missing token", needToken: true });
   }
 
   const fetchOne = async (url, authHeader) => {
@@ -54,12 +45,12 @@ export default async function handler(req, res) {
     });
     const raw = await r.text();
 
-    if (!r.ok) return { ok: false, status: r.status };
+    if (!r.ok) return { ok: false, status: r.status, raw };
 
     try {
       return { ok: true, data: JSON.parse(raw) };
     } catch {
-      return { ok: false, status: 502 };
+      return { ok: false, status: 502, raw };
     }
   };
 
@@ -67,14 +58,13 @@ export default async function handler(req, res) {
     Array.isArray(x?.content) ? x.content : Array.isArray(x) ? x : [];
 
   const [bxdGapRes, bxdDangRes, bytGapRes, bytDangRes] = await Promise.all([
-    fetchOne(API_BXD_GAP, authBXD),
-    fetchOne(API_BXD_DANG_XU_LY, authBXD),
-    fetchOne(API_BYT_GAP, authBYT),
-    fetchOne(API_BYT_DANG_XU_LY, authBYT),
+    fetchOne(API_BXD_GAP, bxd),
+    fetchOne(API_BXD_DANG_XU_LY, bxd),
+    fetchOne(API_BYT_GAP, byt),
+    fetchOne(API_BYT_DANG_XU_LY, byt),
   ]);
 
   const is401or403 = (r) => !r.ok && (r.status === 401 || r.status === 403);
-
   const unauthorized =
     is401or403(bxdGapRes) ||
     is401or403(bxdDangRes) ||
@@ -82,7 +72,6 @@ export default async function handler(req, res) {
     is401or403(bytDangRes);
 
   if (unauthorized) {
-    // Không còn DB để mark invalid, nên chỉ báo FE mở modal nhập lại token
     return res.status(401).json({
       unauthorized: true,
       needToken: true,
@@ -91,14 +80,32 @@ export default async function handler(req, res) {
     });
   }
 
+  // nếu upstream lỗi khác (500/502/timeout), trả 502 cho FE dễ xử lý
+  const anyUpstreamFail =
+    !bxdGapRes.ok || !bxdDangRes.ok || !bytGapRes.ok || !bytDangRes.ok;
+
+  if (anyUpstreamFail) {
+    return res.status(502).json({
+      error: "Upstream error",
+      detail: {
+        bxdGap: { ok: bxdGapRes.ok, status: bxdGapRes.status },
+        bxdDang: { ok: bxdDangRes.ok, status: bxdDangRes.status },
+        bytGap: { ok: bytGapRes.ok, status: bytGapRes.status },
+        bytDang: { ok: bytDangRes.ok, status: bytDangRes.status },
+      },
+      boXayDung: { gap: [], dangXuLy: [] },
+      boYTe: { gap: [], dangXuLy: [] },
+    });
+  }
+
   return res.status(200).json({
     boXayDung: {
-      gap: bxdGapRes.ok ? toList(bxdGapRes.data) : [],
-      dangXuLy: bxdDangRes.ok ? toList(bxdDangRes.data) : [],
+      gap: toList(bxdGapRes.data),
+      dangXuLy: toList(bxdDangRes.data),
     },
     boYTe: {
-      gap: bytGapRes.ok ? toList(bytGapRes.data) : [],
-      dangXuLy: bytDangRes.ok ? toList(bytDangRes.data) : [],
+      gap: toList(bytGapRes.data),
+      dangXuLy: toList(bytDangRes.data),
     },
   });
 }
