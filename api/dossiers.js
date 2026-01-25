@@ -46,12 +46,11 @@ export default async function handler(req, res) {
     });
     const raw = await r.text();
 
-    if (!r.ok) return { ok: false, status: r.status, raw };
-
+    if (!r.ok) return { ok: false, status: r.status, raw, url };
     try {
-      return { ok: true, data: JSON.parse(raw) };
+      return { ok: true, data: JSON.parse(raw), url };
     } catch {
-      return { ok: false, status: 502, raw };
+      return { ok: false, status: 502, raw, url };
     }
   };
 
@@ -66,16 +65,31 @@ export default async function handler(req, res) {
   ]);
 
   const is401or403 = (r) => !r.ok && (r.status === 401 || r.status === 403);
-  const unauthorized =
-    is401or403(bxdGapRes) ||
-    is401or403(bxdDangRes) ||
-    is401or403(bytGapRes) ||
-    is401or403(bytDangRes);
+
+  const authErrors = {
+    bxdGap: is401or403(bxdGapRes) ? bxdGapRes.status : null,
+    bxdDangXuLy: is401or403(bxdDangRes) ? bxdDangRes.status : null,
+    bytGap: is401or403(bytGapRes) ? bytGapRes.status : null,
+    bytDangXuLy: is401or403(bytDangRes) ? bytDangRes.status : null,
+  };
+  const unauthorized = Object.values(authErrors).some((v) => v !== null);
 
   if (unauthorized) {
+    // Nếu bạn muốn biết luôn endpoint nào, có thể trả thêm URL (không nhạy cảm)
+    const detail = {
+      authErrors,
+      endpoints: {
+        bxdGap: process.env.API_BXD_GAP,
+        bxdDangXuLy: process.env.API_BXD_DANG_XU_LY,
+        bytGap: process.env.API_BYT_GAP,
+        bytDangXuLy: process.env.API_BYT_DANG_XU_LY,
+      },
+    };
+
     return res.status(401).json({
       unauthorized: true,
       needToken: true,
+      detail, // ✅ đây là chỗ cho bạn biết API nào 401/403
       boXayDung: { gap: [], dangXuLy: [] },
       boYTe: { gap: [], dangXuLy: [] },
     });
