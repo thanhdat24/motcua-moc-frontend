@@ -49,8 +49,8 @@ export const fetchAllDossiers = async (
 
   try {
     // ✅ LẤY TOKEN TỪ LOCAL STORAGE
-    const tokenBXD = normalizeBearer(localStorage.getItem("TOKEN_BXD") || "");
-    const tokenBYT = normalizeBearer(localStorage.getItem("TOKEN_BYT") || "");
+    const tokenBXD = localStorage.getItem("TOKEN_BXD") || "";
+    const tokenBYT = localStorage.getItem("TOKEN_BYT") || "";
     console.log("tokenBXD", tokenBXD);
     console.log("tokenBYT", tokenBYT);
 

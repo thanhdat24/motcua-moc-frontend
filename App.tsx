@@ -97,8 +97,8 @@ const App: React.FC = () => {
   };
 
   const checkHasTokenLocal = () => {
-    const tokenBXD = normalizeBearer(localStorage.getItem(LS_TOKEN_BXD) || "");
-    const tokenBYT = normalizeBearer(localStorage.getItem(LS_TOKEN_BYT) || "");
+    const tokenBXD = localStorage.getItem(LS_TOKEN_BXD) || "";
+    const tokenBYT = localStorage.getItem(LS_TOKEN_BYT) || "";
     return { tokenBXD, tokenBYT, hasBoth: !!tokenBXD && !!tokenBYT };
   };
 
