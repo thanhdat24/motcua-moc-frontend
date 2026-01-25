@@ -1,16 +1,13 @@
 import { readSession } from "./_auth.js";
-import { getDb } from "./_db.js";
-import { decryptToken } from "./_crypto.js";
 
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
+  if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
   }
 
   const s = readSession(req);
   if (!s) return res.status(401).json({ error: "Not logged in" });
 
-  // 4 upstream API: BXD (gap/dangXuLy) + BYT (gap/dangXuLy)
   const { API_BXD_GAP, API_BXD_DANG_XU_LY, API_BYT_GAP, API_BYT_DANG_XU_LY } =
     process.env;
 
@@ -26,19 +23,26 @@ export default async function handler(req, res) {
     });
   }
 
-  const db = await getDb();
-  const doc = await db.collection("user_tokens").findOne({ userId: s.userId });
-
-  if (!doc || doc.invalid) {
+  // Nhận token từ FE (body)
+  const { tokenBXD, tokenBYT } = req.body || {};
+  if (!tokenBXD || !tokenBYT) {
     return res.status(401).json({ error: "Missing token", needToken: true });
   }
 
-  const token = decryptToken(doc.tokenEnc);
-  const authHeader = token.toLowerCase().startsWith("bearer ")
-    ? token
-    : `Bearer ${token}`;
+  const normalize = (t) => {
+    const v = String(t || "").trim();
+    if (!v) return "";
+    return v.toLowerCase().startsWith("bearer ") ? v : `Bearer ${v}`;
+  };
 
-  const fetchOne = async (url) => {
+  const authBXD = normalize(tokenBXD);
+  const authBYT = normalize(tokenBYT);
+
+  if (!authBXD || !authBYT) {
+    return res.status(401).json({ error: "Invalid token", needToken: true });
+  }
+
+  const fetchOne = async (url, authHeader) => {
     const r = await fetch(url, {
       method: "GET",
       headers: { Authorization: authHeader },
@@ -58,10 +62,10 @@ export default async function handler(req, res) {
     Array.isArray(x?.content) ? x.content : Array.isArray(x) ? x : [];
 
   const [bxdGapRes, bxdDangRes, bytGapRes, bytDangRes] = await Promise.all([
-    fetchOne(API_BXD_GAP),
-    fetchOne(API_BXD_DANG_XU_LY),
-    fetchOne(API_BYT_GAP),
-    fetchOne(API_BYT_DANG_XU_LY),
+    fetchOne(API_BXD_GAP, authBXD),
+    fetchOne(API_BXD_DANG_XU_LY, authBXD),
+    fetchOne(API_BYT_GAP, authBYT),
+    fetchOne(API_BYT_DANG_XU_LY, authBYT),
   ]);
 
   const is401or403 = (r) => !r.ok && (r.status === 401 || r.status === 403);
@@ -73,10 +77,7 @@ export default async function handler(req, res) {
     is401or403(bytDangRes);
 
   if (unauthorized) {
-    await db
-      .collection("user_tokens")
-      .updateOne({ userId: s.userId }, { $set: { invalid: true } });
-
+    // Không còn DB để mark invalid, nên chỉ báo FE mở modal nhập lại token
     return res.status(401).json({
       unauthorized: true,
       needToken: true,
