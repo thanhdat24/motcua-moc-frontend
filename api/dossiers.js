@@ -28,12 +28,22 @@ export default async function handler(req, res) {
     tokenBXD: localStorage.getItem("TOKEN_BXD") || "",
     tokenBYT: localStorage.getItem("TOKEN_BYT") || "",
   };
-
+  console.log("tokenBXD", tokenBXD);
+  console.log("tokenBYT", tokenBYT);
   if (!tokenBXD || !tokenBYT) {
     return res.status(401).json({ error: "Missing token", needToken: true });
   }
 
-  if (!tokenBXD || !tokenBYT) {
+  const normalize = (t) => {
+    const v = String(t || "").trim();
+    if (!v) return "";
+    return v.toLowerCase().startsWith("bearer ") ? v : `Bearer ${v}`;
+  };
+
+  const authBXD = normalize(tokenBXD);
+  const authBYT = normalize(tokenBYT);
+
+  if (!authBXD || !authBYT) {
     return res.status(401).json({ error: "Invalid token", needToken: true });
   }
 
@@ -57,10 +67,10 @@ export default async function handler(req, res) {
     Array.isArray(x?.content) ? x.content : Array.isArray(x) ? x : [];
 
   const [bxdGapRes, bxdDangRes, bytGapRes, bytDangRes] = await Promise.all([
-    fetchOne(API_BXD_GAP, tokenBXD),
-    fetchOne(API_BXD_DANG_XU_LY, tokenBXD),
-    fetchOne(API_BYT_GAP, tokenBYT),
-    fetchOne(API_BYT_DANG_XU_LY, tokenBYT),
+    fetchOne(API_BXD_GAP, authBXD),
+    fetchOne(API_BXD_DANG_XU_LY, authBXD),
+    fetchOne(API_BYT_GAP, authBYT),
+    fetchOne(API_BYT_DANG_XU_LY, authBYT),
   ]);
 
   const is401or403 = (r) => !r.ok && (r.status === 401 || r.status === 403);
