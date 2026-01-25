@@ -24,7 +24,6 @@ const trim = (v: any) => safeText(v).trim();
 const normalizeIsoTz = (s?: string) => {
   const v = trim(s);
   if (!v) return "";
-  // Replace trailing +HHmm or -HHmm with +HH:MM / -HH:MM
   return v.replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
 };
 
@@ -49,32 +48,46 @@ const fmtDateVi = (iso?: string) => {
 };
 
 /**
- * Days difference (ceil) between dueDate and now (local).
- * >0: remaining days
- * 0: today
- * <0: overdue days
+ * Return time left/overdue in days/hours/minutes based on dueDate vs now.
+ * - remaining: "Thời gian còn lại: X ngày Y giờ Z phút"
+ * - overdue: "Đã quá hạn X ngày Y giờ Z phút"
+ *
+ * We use ceil(minutes) to avoid showing 0 phút when still a few seconds.
  */
-const calcDaysDiffFromNow = (iso?: string) => {
+const calcTimeDiffDHMS = (iso?: string) => {
   const d = toDate(iso);
   if (!d) return null;
-  const now = Date.now();
-  return Math.ceil((d.getTime() - now) / (24 * 60 * 60 * 1000));
+
+  const diffMs = d.getTime() - Date.now(); // >0 remaining, <0 overdue
+  const isOverdue = diffMs < 0;
+
+  const absMs = Math.abs(diffMs);
+  const totalMinutes = Math.ceil(absMs / (60 * 1000));
+
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+
+  return { isOverdue, days, hours, minutes };
 };
 
-const deadlineLabel = (daysDiff: number | null) => {
-  if (daysDiff == null) return "-";
-  if (daysDiff > 0) return `Còn hạn (còn ${daysDiff} ngày)`;
-  if (daysDiff === 0) return "Hôm nay";
-  return `Trễ hạn (trễ ${Math.abs(daysDiff)} ngày)`;
+const formatDuration = (days: number, hours: number, minutes: number) => {
+  // Always show all parts to match your examples
+  return `${days} ngày ${hours} giờ ${minutes} phút`;
 };
 
-const deadlineBadgeClass = (daysDiff: number | null) => {
-  if (daysDiff == null)
+const deadlineBadgeClass = (info: ReturnType<typeof calcTimeDiffDHMS>) => {
+  if (!info)
     return "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
-  if (daysDiff < 0)
+
+  if (info.isOverdue)
     return "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40";
-  if (daysDiff <= 2)
+
+  // If remaining <= 2 days => warning
+  const remainingMinutes = info.days * 24 * 60 + info.hours * 60 + info.minutes;
+  if (remainingMinutes <= 2 * 24 * 60)
     return "bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-900/40";
+
   return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-900/40";
 };
 
@@ -106,7 +119,6 @@ const getStatusName = (dossier: any) => {
 };
 
 const getDueDateFromCurrentTask = (dossier: any) => {
-  // ưu tiên currentTask[0].dueDate
   const due = dossier?.currentTask?.[0]?.dueDate;
   return trim(due) || "";
 };
@@ -180,13 +192,11 @@ type Row = {
   url: string;
   procedureName: string;
 
-  // Ngày hẹn trả (appointmentDate)
   appointmentText: string;
 
-  // Thời hạn dựa theo currentTask[0].dueDate
   dueDateText: string;
-  dueDaysDiff: number | null;
-  deadlineText: string;
+  deadlineText: string; // includes "Thời gian còn lại..." or "Đã quá hạn..."
+  deadlineInfo: ReturnType<typeof calcTimeDiffDHMS>;
 
   ownerName: string;
   statusName: string;
@@ -209,8 +219,15 @@ const DossierTable: React.FC<Props> = ({
 
       const dueIso = getDueDateFromCurrentTask(x);
       const dueDateText = dueIso ? fmtDateVi(dueIso) : "-";
-      const dueDaysDiff = dueIso ? calcDaysDiffFromNow(dueIso) : null;
-      const deadlineText = deadlineLabel(dueDaysDiff);
+
+      const info = dueIso ? calcTimeDiffDHMS(dueIso) : null;
+      let deadlineText = "-";
+      if (info) {
+        const dur = formatDuration(info.days, info.hours, info.minutes);
+        deadlineText = info.isOverdue
+          ? `Đã quá hạn ${dur}`
+          : `Thời gian còn lại: ${dur}`;
+      }
 
       return {
         key: trim(x?.id) || code,
@@ -219,8 +236,8 @@ const DossierTable: React.FC<Props> = ({
         procedureName: getProcedureName(x),
         appointmentText,
         dueDateText,
-        dueDaysDiff,
         deadlineText,
+        deadlineInfo: info,
         ownerName: getOwnerName(x),
         statusName: getStatusName(x),
       };
@@ -246,7 +263,6 @@ const DossierTable: React.FC<Props> = ({
           </span>
         </div>
 
-        {/* Gợi ý chỗ ghi chú cho dễ hiểu */}
         <div className="hidden md:block text-[11px] text-gray-500 dark:text-gray-400">
           <span className="font-semibold">Thời hạn</span> tính theo{" "}
           <span className="font-mono">currentTask[0].dueDate</span>
@@ -271,12 +287,9 @@ const DossierTable: React.FC<Props> = ({
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
                   Ngày hẹn trả
                 </th>
-
-                {/* ✅ Cột mới */}
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                <th className="px-4 py-3 font-semibold min-w-[320px]">
                   Thời hạn
                 </th>
-
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
                   Chủ hồ sơ
                 </th>
@@ -312,18 +325,19 @@ const DossierTable: React.FC<Props> = ({
                     {r.appointmentText}
                   </td>
 
-                  {/* ✅ Cột “Thời hạn” (dueDate + trạng thái còn hạn/trễ hạn) */}
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  {/* ✅ Thời hạn: có ngày + giờ + phút */}
+                  <td className="px-4 py-3">
                     <div className="flex flex-col gap-1">
                       <span className="text-xs text-gray-600 dark:text-gray-300">
-                        {r.dueDateText}
+                        Due: {r.dueDateText}
                       </span>
+
                       <span
                         className={[
                           "text-[11px] font-bold px-2 py-1 rounded-full border inline-flex w-fit",
-                          deadlineBadgeClass(r.dueDaysDiff),
+                          deadlineBadgeClass(r.deadlineInfo),
                         ].join(" ")}
-                        title="So sánh currentTask[0].dueDate với ngày hiện tại"
+                        title="So sánh currentTask[0].dueDate với thời điểm hiện tại"
                       >
                         {r.deadlineText}
                       </span>
