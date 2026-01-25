@@ -43,7 +43,7 @@ export const fetchAllDossiers = async (
 
   try {
     const res = await fetch("/api/dossiers", {
-      method: "GET",
+      method: "POST",
       credentials: "include",
     });
 
