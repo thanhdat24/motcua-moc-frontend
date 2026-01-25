@@ -73,9 +73,10 @@ const getStatusName = (dossier: any) => {
 };
 
 /**
- * ✅ Lọc dữ liệu theo yêu cầu:
+ * ✅ Lọc theo yêu cầu:
  * - CHỈ áp dụng cho BXD
- * - loại bỏ hồ sơ có procedure.code === "1.013225"
+ * - procedure.code !== "1.013225"
+ * - statusName === "Đang xử lý"
  */
 const filterByMinistry = (ministry: Ministry, list: any[]) => {
   const arr = Array.isArray(list) ? list : [];
@@ -83,8 +84,14 @@ const filterByMinistry = (ministry: Ministry, list: any[]) => {
 
   return arr.filter((x) => {
     const procCode = trim(x?.procedure?.code); // ví dụ "1.013225"
-    // loại bỏ đúng mã này
     if (procCode === "1.013225") return false;
+
+    const status =
+      trim(x?.dossierStatus?.name) || trim(x?.dossierTaskStatus?.name);
+
+    // Chỉ lấy trạng thái "Đang xử lý"
+    if (status !== "Đang xử lý") return false;
+
     return true;
   });
 };
@@ -193,7 +200,7 @@ const DossierTable: React.FC<Props> = ({
 
       {rows.length === 0 ? (
         <div className="p-6 text-sm text-gray-500 dark:text-gray-400">
-          Không có dữ liệu.
+          Không có dữ liệu phù hợp.
         </div>
       ) : (
         <div className="overflow-x-auto">
