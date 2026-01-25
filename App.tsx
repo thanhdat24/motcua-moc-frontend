@@ -557,124 +557,133 @@ const App: React.FC = () => {
       {/* Settings */}
       {/* Settings Modal - GIỮ CODE CŨ */}
       {showSettings && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in flex flex-col max-h-[90vh] transition-colors">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 animate-scale-in flex flex-col max-h-[90vh] transition-colors border border-gray-100 dark:border-gray-700">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Settings className="w-6 h-6 text-blue-600" />
                 Cấu hình hệ thống
               </h2>
               <button
                 onClick={() => setShowSettings(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <span className="sr-only">Đóng</span>
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="overflow-y-auto space-y-6 px-1 pb-2">
+            <div className="overflow-y-auto space-y-6 px-1 pb-4">
+              {/* Token Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
-                  <ICONS.Server className="w-5 h-5" />
-                  <span className="font-semibold text-sm">Kết nối Backend</span>
-                </div>
-
-                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
-                  <ICONS.Info className="w-4 h-4 mt-0.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
-                  <span>
-                    Backend chạy chung Vercel API Routes:{" "}
-                    <strong className="font-mono text-gray-700 dark:text-gray-300">
-                      /api/
-                    </strong>
+                  <ShieldCheck className="w-5 h-5" />
+                  <span className="font-semibold text-sm">
+                    Quản lý Token (Authorization)
                   </span>
                 </div>
 
-                <div className="bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 rounded-lg p-3 text-sm text-gray-700 dark:text-gray-200">
-                  Token được lưu trên server (MongoDB). Nếu token hết hạn hệ
-                  thống sẽ yêu cầu nhập lại.
-                </div>
-
-                <button
-                  onClick={() => {
-                    setShowSettings(false);
-                    setShowTokenModal(true);
-                  }}
-                  className="w-full flex justify-center items-center py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-                >
-                  <ICONS.CheckCircle className="w-4 h-4 mr-2" />
-                  Nhập / cập nhật token
-                </button>
-              </div>
-
-              <hr className="border-gray-100 dark:border-gray-700" />
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-400">
-                    <ICONS.Database className="w-5 h-5" />
-                    <span className="font-semibold text-sm">Chế độ Demo</span>
+                {/* BXD Token Row */}
+                <div className="p-4 bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 rounded-xl flex items-center justify-between group transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg">
+                      <Building2 size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">Bộ Xây dựng</p>
+                      <p className="text-[10px] text-gray-500 uppercase font-medium">
+                        Dịch vụ công BXD
+                      </p>
+                    </div>
                   </div>
-
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      id="mock-toggle"
-                      checked={useMock}
-                      className="sr-only peer"
-                      onChange={async (e) => {
-                        const v = e.target.checked;
-                        setUseMock(v);
-                        localStorage.setItem("USE_MOCK", String(v));
-
-                        // Giữ hành vi hợp lý: bật demo -> refresh demo; tắt demo -> chạy lại flow login/token
-                        if (v) {
-                          setShowLogin(false);
-                          setShowTokenModal(false);
-                          await handleRefresh(true);
-                        } else {
-                          const isLogged = await checkLoggedIn();
-                          if (!isLogged) {
-                            setShowLogin(true);
-                            return;
-                          }
-                          const hasToken = await checkHasToken();
-                          if (!hasToken) {
-                            setShowTokenModal(true);
-                            return;
-                          }
-                          await handleRefresh(false);
-                        }
-                      }}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
-                  </label>
+                  <button
+                    onClick={() => {
+                      setShowSettings(false);
+                      setTargetMinistry("BXD");
+                      setShowTokenModal(true);
+                    }}
+                    className="py-1.5 px-4 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow-sm"
+                  >
+                    Cập nhật
+                  </button>
                 </div>
 
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Bật chế độ này để test UI (không cần đăng nhập/token).
-                </p>
+                {/* BYT Token Row */}
+                <div className="p-4 bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 rounded-xl flex items-center justify-between group transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                      <Stethoscope size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">Bộ Y tế</p>
+                      <p className="text-[10px] text-gray-500 uppercase font-medium">
+                        Dịch vụ công BYT
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowSettings(false);
+                      setTargetMinistry("BYT");
+                      setShowTokenModal(true);
+                    }}
+                    className="py-1.5 px-4 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-sm"
+                  >
+                    Cập nhật
+                  </button>
+                </div>
               </div>
 
-              <hr className="border-gray-100 dark:border-gray-700" />
+              {/* Demo Mode Section */}
+              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Database className="w-5 h-5 text-yellow-600" />
+                  <div>
+                    <span className="font-bold text-sm text-yellow-800 dark:text-yellow-400">
+                      Chế độ Demo
+                    </span>
+                    <p className="text-[10px] text-yellow-600/70">
+                      Test UI không cần Token
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useMock}
+                    onChange={async (e) => {
+                      const v = e.target.checked;
+                      setUseMock(v);
+                      localStorage.setItem("USE_MOCK", String(v));
+                      if (v) {
+                        setShowLogin(false);
+                        setShowTokenModal(false);
+                        await handleRefresh(true);
+                      } else {
+                        const logged = await checkLoggedIn();
+                        if (!logged) setShowLogin(true);
+                        else await handleRefresh(false);
+                      }
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-600"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2 text-[10px] text-gray-500 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg italic">
+                <Info size={14} className="shrink-0" />
+                <span>
+                  Token được lưu trữ bảo mật trên server. Vui lòng không chia sẻ
+                  Authorization Token cho người lạ.
+                </span>
+              </div>
 
               <button
                 onClick={onLogout}
-                className="w-full flex justify-center items-center py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium text-gray-800 dark:text-gray-100 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="w-full flex justify-center items-center py-3 px-4 rounded-xl shadow-sm text-sm font-bold text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/10 dark:text-red-400 transition-colors border border-red-100 dark:border-red-900/20"
               >
                 <ICONS.LogOut className="w-4 h-4 mr-2" />
-                Đăng xuất
+                Đăng xuất tài khoản
               </button>
             </div>
           </div>
