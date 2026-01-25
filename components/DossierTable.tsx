@@ -2,36 +2,100 @@
 import React, { useMemo } from "react";
 import type { DossierItem } from "../types";
 
+type Ministry = "BXD" | "BYT";
+
 type Props = {
   title: string;
   data: DossierItem[];
+  ministry: Ministry; // ✅ thêm prop để biết mở link theo bộ nào
   variant?: "urgent" | "normal";
 };
 
+const BASE_BYT = "https://motcua.moh.gov.vn";
+const BASE_BXD = "https://motcuabxd.moc.gov.vn";
+
+const safeText = (v: any) => (v == null ? "" : String(v));
+const trim = (v: any) => safeText(v).trim();
+
+const fmtDateVi = (iso?: string) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("vi-VN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const calcDaysLeft = (appointmentIso?: string) => {
+  if (!appointmentIso) return null;
+  const target = new Date(appointmentIso).getTime();
+  if (Number.isNaN(target)) return null;
+  const now = Date.now();
+  return Math.ceil((target - now) / (24 * 60 * 60 * 1000));
+};
+
+const daysLeftLabel = (daysLeft: number | null) => {
+  if (daysLeft == null) return "-";
+  if (daysLeft > 0) return `Còn ${daysLeft} ngày`;
+  if (daysLeft === 0) return "Hôm nay";
+  return `Quá hạn ${Math.abs(daysLeft)} ngày`;
+};
+
+const getOwnerName = (dossier: any) => {
+  const a = dossier?.applicant?.data;
+  return (
+    trim(a?.ownerFullname) ||
+    trim(a?.fullname) ||
+    trim(dossier?.applicant?.fullname) ||
+    trim(dossier?.accepter?.fullname) ||
+    "-"
+  );
+};
+
+const getProcedureName = (dossier: any) => {
+  return (
+    trim(dossier?.procedure?.translate?.name) ||
+    trim(dossier?.procedure?.name) ||
+    "-"
+  );
+};
+
+const getStatusName = (dossier: any) => {
+  return (
+    trim(dossier?.dossierStatus?.name) ||
+    trim(dossier?.dossierTaskStatus?.name) ||
+    "-"
+  );
+};
+
 /**
- * Build URL mở tab mới khi click vào MÃ HỒ SƠ.
- * Dựa theo pattern bạn đưa:
- * https://motcua.moh.gov.vn/vi/dossier/search/${id}? ... &procedure=...&remindId=...
+ * ✅ Build URL click cho từng Bộ.
  *
- * Lưu ý:
- * - Dùng URLSearchParams để tránh dính ký tự rác kiểu "Ư" khi copy/paste.
- * - encode tự động qua URLSearchParams.
+ * Hiện bạn đưa link theo dạng:
+ *   /vi/dossier/search/${id}? ... &procedure=<procedureId>&remindId=<...>
+ *
+ * Nếu sau này BXD khác route/query, bạn chỉ cần sửa hàm này.
  */
-const buildMohSearchUrl = (dossier: any) => {
-  const id = String(dossier?.id || "").trim();
-  const base = `https://motcua.moh.gov.vn/vi/dossier/search/${encodeURIComponent(
-    id
-  )}`;
+const buildSearchUrl = (ministry: Ministry, dossier: any) => {
+  const base = ministry === "BYT" ? BASE_BYT : BASE_BXD;
 
-  // procedure: trong dữ liệu của bạn là dossier.procedure.id
-  // nếu không có thì fallback theo bạn đưa
-  const procedureId = String(
-    dossier?.procedure?.id || "692e3dbf2fb610046865c419"
-  ).trim();
+  const id = trim(dossier?.id);
+  if (!id) return base;
 
-  // remindId: trong link mẫu bạn đang để remindId=${procedure.id}
-  // Nếu thực tế remindId là field khác, chỉ cần thay ở đây.
+  // procedureId: ưu tiên dossier.procedure.id, fallback theo bạn đưa
+  const procedureId =
+    trim(dossier?.procedure?.id) ||
+    (ministry === "BYT" ? "692e3dbf2fb610046865c419" : "");
+
+  // remindId: bạn đang dùng procedure.id làm remindId.
+  // Nếu thực tế remindId khác, đổi tại đây.
   const remindId = procedureId;
+
+  const path = `/vi/dossier/search/${encodeURIComponent(id)}`;
 
   const params = new URLSearchParams({
     code: "",
@@ -61,108 +125,53 @@ const buildMohSearchUrl = (dossier: any) => {
     vnpostStatus: "",
   });
 
-  return `${base}?${params.toString()}`;
-};
-
-const safeText = (v: any) => (v == null ? "" : String(v));
-
-const fmtDateVi = (iso?: string) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("vi-VN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-const calcDaysLeft = (appointmentIso?: string) => {
-  if (!appointmentIso) return null;
-  const target = new Date(appointmentIso).getTime();
-  if (Number.isNaN(target)) return null;
-
-  // Làm tròn theo ngày, tính từ "bây giờ"
-  const now = Date.now();
-  const ms = target - now;
-  return Math.ceil(ms / (24 * 60 * 60 * 1000));
-};
-
-const daysLeftLabel = (daysLeft: number | null) => {
-  if (daysLeft == null) return "-";
-  if (daysLeft > 0) return `Còn ${daysLeft} ngày`;
-  if (daysLeft === 0) return "Hôm nay";
-  return `Quá hạn ${Math.abs(daysLeft)} ngày`;
-};
-
-const getOwnerName = (dossier: any) => {
-  // Ưu tiên applicant.data.ownerFullname -> applicant.data.fullname -> accepter.fullname
-  const a = dossier?.applicant?.data;
-  return (
-    safeText(a?.ownerFullname) ||
-    safeText(a?.fullname) ||
-    safeText(dossier?.accepter?.fullname) ||
-    "-"
-  );
-};
-
-const getProcedureName = (dossier: any) => {
-  // procedure.translate.name hoặc fallback
-  return (
-    safeText(dossier?.procedure?.translate?.name) ||
-    safeText(dossier?.procedure?.name) ||
-    "-"
-  );
-};
-
-const getStatusName = (dossier: any) => {
-  // dossierStatus.name hoặc dossierTaskStatus.name
-  return (
-    safeText(dossier?.dossierStatus?.name) ||
-    safeText(dossier?.dossierTaskStatus?.name) ||
-    "-"
-  );
+  return `${base}${path}?${params.toString()}`;
 };
 
 type Row = {
   key: string;
   code: string;
-  mohUrl: string;
+  url: string;
   procedureName: string;
-  appointmentDateText: string;
+  appointmentText: string;
   daysLeftText: string;
   daysLeftValue: number | null;
   ownerName: string;
   statusName: string;
 };
 
-const DossierTable: React.FC<Props> = ({ title, data, variant = "normal" }) => {
+const DossierTable: React.FC<Props> = ({
+  title,
+  data,
+  ministry,
+  variant = "normal",
+}) => {
   const rows: Row[] = useMemo(() => {
     return (Array.isArray(data) ? data : []).map((x: any) => {
-      const code = safeText(x?.code || x?.id || "-");
-      const appointmentIso = safeText(x?.appointmentDate || "");
+      const code = trim(x?.code) || trim(x?.id) || "-";
+      const appointmentIso = trim(x?.appointmentDate);
       const daysLeftValue = calcDaysLeft(appointmentIso);
 
       return {
-        key: safeText(x?.id || code),
+        key: trim(x?.id) || code,
         code,
-        mohUrl: buildMohSearchUrl(x),
+        url: buildSearchUrl(ministry, x),
         procedureName: getProcedureName(x),
-        appointmentDateText: fmtDateVi(appointmentIso) || "-",
+        appointmentText: fmtDateVi(appointmentIso) || "-",
         daysLeftText: daysLeftLabel(daysLeftValue),
         daysLeftValue,
         ownerName: getOwnerName(x),
         statusName: getStatusName(x),
       };
     });
-  }, [data]);
+  }, [data, ministry]);
 
   const badgeClass =
     variant === "urgent"
       ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300 border-red-200 dark:border-red-900/40"
-      : "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 border-blue-200 dark:border-blue-900/40";
+      : ministry === "BXD"
+      ? "bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 border-blue-200 dark:border-blue-900/40"
+      : "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/40";
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border dark:border-gray-800 overflow-hidden">
@@ -213,14 +222,14 @@ const DossierTable: React.FC<Props> = ({ title, data, variant = "normal" }) => {
                   key={r.key}
                   className="text-sm hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
                 >
-                  {/* CLICK VÀO MÃ HỒ SƠ => MỞ TAB MỚI */}
+                  {/* ✅ CLICK MÃ HỒ SƠ => MỞ TAB MỚI */}
                   <td className="px-4 py-3 font-mono text-xs md:text-sm whitespace-nowrap">
                     <a
-                      href={r.mohUrl}
+                      href={r.url}
                       target="_blank"
                       rel="noreferrer"
                       className="text-blue-600 dark:text-blue-400 hover:underline font-semibold"
-                      title="Mở hồ sơ trên motcua.moh.gov.vn"
+                      title="Mở hồ sơ trên hệ thống"
                     >
                       {r.code}
                     </a>
@@ -231,7 +240,7 @@ const DossierTable: React.FC<Props> = ({ title, data, variant = "normal" }) => {
                   </td>
 
                   <td className="px-4 py-3 whitespace-nowrap">
-                    {r.appointmentDateText}
+                    {r.appointmentText}
                   </td>
 
                   <td className="px-4 py-3 whitespace-nowrap">
