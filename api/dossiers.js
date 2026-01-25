@@ -30,7 +30,11 @@ export default async function handler(req, res) {
   };
 
   // ✅ nhận token từ FE
-  const { tokenBXD, tokenBYT } = req.body || {};
+  // const { tokenBXD, tokenBYT } = req.body || {};
+
+  const tokenBXD = normalizeBearer(localStorage.getItem("TOKEN_BXD") || "");
+  const tokenBYT = normalizeBearer(localStorage.getItem("TOKEN_BYT") || "");
+
   const bxd = normalizeBearer(tokenBXD);
   const byt = normalizeBearer(tokenBYT);
 
