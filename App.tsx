@@ -533,14 +533,17 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
+                  // BXD tab
                   <DossierTable
                     title="Hồ sơ cần xử lý (GẤP)"
                     data={boXayDung.gap}
                     variant="urgent"
+                    ministry="BXD"
                   />
                   <DossierTable
                     title="Hồ sơ đang xử lý"
                     data={boXayDung.dangXuLy}
+                    ministry="BXD"
                   />
                 </div>
               </div>
@@ -559,14 +562,17 @@ const App: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
+                  // BYT tab
                   <DossierTable
                     title="Hồ sơ cần xử lý (GẤP)"
                     data={boYTe.gap}
                     variant="urgent"
+                    ministry="BYT"
                   />
                   <DossierTable
                     title="Hồ sơ đang xử lý"
                     data={boYTe.dangXuLy}
+                    ministry="BYT"
                   />
                 </div>
               </div>
