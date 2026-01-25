@@ -52,6 +52,10 @@ const App: React.FC = () => {
   const [loginError, setLoginError] = useState("");
   const [tokenError, setTokenError] = useState("");
 
+  const [targetMinistry, setTargetMinistry] = useState<"BXD" | "BYT" | null>(
+    null
+  );
+
   // Data
   const [loading, setLoading] = useState(false);
   const [boXayDung, setBoXayDung] = useState<MinistryData>({
@@ -117,6 +121,7 @@ const App: React.FC = () => {
     // token hết hạn/invalid hoặc unauthorized => mở token modal
     if (result?.needToken || result?.unauthorized) {
       setUnauthorized(true);
+      setTargetMinistry(activeTab);
       setShowTokenModal(true);
       setLoading(false);
       return;
@@ -155,6 +160,7 @@ const App: React.FC = () => {
 
       const hasToken = await checkHasToken();
       if (!hasToken) {
+        setTargetMinistry("BXD");
         setShowTokenModal(true);
         return;
       }
@@ -188,8 +194,12 @@ const App: React.FC = () => {
 
       // Sau login: check token
       const hasToken = await checkHasToken();
-      if (!hasToken) setShowTokenModal(true);
-      else await handleRefresh(false);
+      if (!hasToken) {
+        setTargetMinistry("BXD");
+        setShowTokenModal(true);
+      } else {
+        await handleRefresh(false);
+      }
     } catch {
       setLoginError("Lỗi mạng khi đăng nhập.");
       setLoginLoading(false);
@@ -568,7 +578,7 @@ const App: React.FC = () => {
                 onClick={() => setShowSettings(false)}
                 className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
-                <X className="w-6 h-6" />
+                <ICONS.X className="w-6 h-6" />
               </button>
             </div>
 
@@ -576,7 +586,7 @@ const App: React.FC = () => {
               {/* Token Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
-                  <ShieldCheck className="w-5 h-5" />
+                  <ICONS.ShieldCheck className="w-5 h-5" />
                   <span className="font-semibold text-sm">
                     Quản lý Token (Authorization)
                   </span>
@@ -636,7 +646,7 @@ const App: React.FC = () => {
               {/* Demo Mode Section */}
               <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-100 dark:border-yellow-900/30 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Database className="w-5 h-5 text-yellow-600" />
+                  <ICONS.Database className="w-5 h-5 text-yellow-600" />
                   <div>
                     <span className="font-bold text-sm text-yellow-800 dark:text-yellow-400">
                       Chế độ Demo
@@ -671,7 +681,7 @@ const App: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 text-[10px] text-gray-500 bg-gray-100 dark:bg-gray-800 p-3 rounded-lg italic">
-                <Info size={14} className="shrink-0" />
+                <ICONS.Info size={14} className="shrink-0" />
                 <span>
                   Token được lưu trữ bảo mật trên server. Vui lòng không chia sẻ
                   Authorization Token cho người lạ.
