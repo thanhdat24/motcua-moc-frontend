@@ -51,6 +51,8 @@ export const fetchAllDossiers = async (
     // ✅ LẤY TOKEN TỪ LOCAL STORAGE
     const tokenBXD = normalizeBearer(localStorage.getItem("TOKEN_BXD") || "");
     const tokenBYT = normalizeBearer(localStorage.getItem("TOKEN_BYT") || "");
+    console.log("tokenBXD", tokenBXD);
+    console.log("tokenBYT", tokenBYT);
 
     // Nếu thiếu token -> báo cần token (để mở modal)
     if (!tokenBXD || !tokenBYT) {
