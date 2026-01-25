@@ -7,7 +7,7 @@ type Ministry = "BXD" | "BYT";
 type Props = {
   title: string;
   data: DossierItem[];
-  ministry: Ministry; // ✅ thêm prop để biết mở link theo bộ nào
+  ministry: Ministry;
   variant?: "urgent" | "normal";
 };
 
@@ -73,27 +73,30 @@ const getStatusName = (dossier: any) => {
 };
 
 /**
- * ✅ Build URL click cho từng Bộ.
- *
- * Hiện bạn đưa link theo dạng:
- *   /vi/dossier/search/${id}? ... &procedure=<procedureId>&remindId=<...>
- *
- * Nếu sau này BXD khác route/query, bạn chỉ cần sửa hàm này.
+ * ✅ Lọc dữ liệu theo yêu cầu:
+ * - CHỈ áp dụng cho BXD
+ * - loại bỏ hồ sơ có procedure.code === "1.013225"
  */
+const filterByMinistry = (ministry: Ministry, list: any[]) => {
+  const arr = Array.isArray(list) ? list : [];
+  if (ministry !== "BXD") return arr;
+
+  return arr.filter((x) => {
+    const procCode = trim(x?.procedure?.code); // ví dụ "1.013225"
+    // loại bỏ đúng mã này
+    if (procCode === "1.013225") return false;
+    return true;
+  });
+};
+
 const buildSearchUrl = (ministry: Ministry, dossier: any) => {
   const base = ministry === "BYT" ? BASE_BYT : BASE_BXD;
 
   const id = trim(dossier?.id);
   if (!id) return base;
 
-  // procedureId: ưu tiên dossier.procedure.id, fallback theo bạn đưa
-  const procedureId =
-    trim(dossier?.procedure?.id) ||
-    (ministry === "BYT" ? "692e3dbf2fb610046865c419" : "");
-
-  // remindId: bạn đang dùng procedure.id làm remindId.
-  // Nếu thực tế remindId khác, đổi tại đây.
-  const remindId = procedureId;
+  const procedureId = trim(dossier?.procedure?.id) || "";
+  const remindId = procedureId || "";
 
   const path = `/vi/dossier/search/${encodeURIComponent(id)}`;
 
@@ -147,7 +150,9 @@ const DossierTable: React.FC<Props> = ({
   variant = "normal",
 }) => {
   const rows: Row[] = useMemo(() => {
-    return (Array.isArray(data) ? data : []).map((x: any) => {
+    const filtered = filterByMinistry(ministry, data);
+
+    return filtered.map((x: any) => {
       const code = trim(x?.code) || trim(x?.id) || "-";
       const appointmentIso = trim(x?.appointmentDate);
       const daysLeftValue = calcDaysLeft(appointmentIso);
@@ -222,7 +227,6 @@ const DossierTable: React.FC<Props> = ({
                   key={r.key}
                   className="text-sm hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
                 >
-                  {/* ✅ CLICK MÃ HỒ SƠ => MỞ TAB MỚI */}
                   <td className="px-4 py-3 font-mono text-xs md:text-sm whitespace-nowrap">
                     <a
                       href={r.url}
