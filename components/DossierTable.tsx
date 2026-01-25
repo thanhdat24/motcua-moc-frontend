@@ -19,7 +19,6 @@ const trim = (v: any) => safeText(v).trim();
 
 /**
  * Convert timezone like +0700 -> +07:00 so Date() can parse reliably.
- * Also handles -0700.
  */
 const normalizeIsoTz = (s?: string) => {
   const v = trim(s);
@@ -51,8 +50,6 @@ const fmtDateVi = (iso?: string) => {
  * Return time left/overdue in days/hours/minutes based on dueDate vs now.
  * - remaining: "Thời gian còn lại: X ngày Y giờ Z phút"
  * - overdue: "Đã quá hạn X ngày Y giờ Z phút"
- *
- * We use ceil(minutes) to avoid showing 0 phút when still a few seconds.
  */
 const calcTimeDiffDHMS = (iso?: string) => {
   const d = toDate(iso);
@@ -71,10 +68,8 @@ const calcTimeDiffDHMS = (iso?: string) => {
   return { isOverdue, days, hours, minutes };
 };
 
-const formatDuration = (days: number, hours: number, minutes: number) => {
-  // Always show all parts to match your examples
-  return `${days} ngày ${hours} giờ ${minutes} phút`;
-};
+const formatDuration = (days: number, hours: number, minutes: number) =>
+  `${days} ngày ${hours} giờ ${minutes} phút`;
 
 const deadlineBadgeClass = (info: ReturnType<typeof calcTimeDiffDHMS>) => {
   if (!info)
@@ -83,7 +78,6 @@ const deadlineBadgeClass = (info: ReturnType<typeof calcTimeDiffDHMS>) => {
   if (info.isOverdue)
     return "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40";
 
-  // If remaining <= 2 days => warning
   const remainingMinutes = info.days * 24 * 60 + info.hours * 60 + info.minutes;
   if (remainingMinutes <= 2 * 24 * 60)
     return "bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-900/40";
@@ -97,37 +91,27 @@ const getOwnerName = (dossier: any) => {
     trim(a?.ownerFullname) ||
     trim(a?.fullname) ||
     trim(dossier?.applicant?.fullname) ||
-    trim(dossier?.accepter?.fullname) ||
     "-"
   );
 };
 
-const getProcedureName = (dossier: any) => {
-  return (
-    trim(dossier?.procedure?.translate?.name) ||
-    trim(dossier?.procedure?.name) ||
-    "-"
-  );
-};
+const getProcedureName = (dossier: any) =>
+  trim(dossier?.procedure?.translate?.name) ||
+  trim(dossier?.procedure?.name) ||
+  "-";
 
-const getStatusName = (dossier: any) => {
-  return (
-    trim(dossier?.dossierStatus?.name) ||
-    trim(dossier?.dossierTaskStatus?.name) ||
-    "-"
-  );
-};
+const getStatusName = (dossier: any) =>
+  trim(dossier?.dossierStatus?.name) ||
+  trim(dossier?.dossierTaskStatus?.name) ||
+  "-";
 
-const getDueDateFromCurrentTask = (dossier: any) => {
-  const due = dossier?.currentTask?.[0]?.dueDate;
-  return trim(due) || "";
-};
+const getDueDateFromCurrentTask = (dossier: any) =>
+  trim(dossier?.currentTask?.[0]?.dueDate) || "";
 
 /**
  * ✅ Lọc theo yêu cầu BXD:
  * - procedure.code !== "1.013225"
- * - statusName === "Đang xử lý"
- * (BYT giữ nguyên)
+ * - chỉ hiện thị trạng thái "Đang xử lý"
  */
 const filterByMinistry = (ministry: Ministry, list: any[]) => {
   const arr = Array.isArray(list) ? list : [];
@@ -139,7 +123,6 @@ const filterByMinistry = (ministry: Ministry, list: any[]) => {
 
     const status =
       trim(x?.dossierStatus?.name) || trim(x?.dossierTaskStatus?.name);
-
     return status === "Đang xử lý";
   });
 };
@@ -168,7 +151,7 @@ const buildSearchUrl = (ministry: Ministry, dossier: any) => {
     acceptFrom: "",
     acceptTo: "",
     status: "",
-    remindId: remindId,
+    remindId,
     sortId: "0",
     applicantOrganization: "",
     appointmentFrom: "",
@@ -191,16 +174,27 @@ type Row = {
   code: string;
   url: string;
   procedureName: string;
-
   appointmentText: string;
 
   dueDateText: string;
-  deadlineText: string; // includes "Thời gian còn lại..." or "Đã quá hạn..."
+  deadlineText: string;
   deadlineInfo: ReturnType<typeof calcTimeDiffDHMS>;
 
   ownerName: string;
   statusName: string;
 };
+
+const Field: React.FC<{ label: string; children: React.ReactNode }> = ({
+  label,
+  children,
+}) => (
+  <div className="flex flex-col gap-1">
+    <span className="text-[10px] uppercase tracking-wide text-gray-500 dark:text-gray-400 font-semibold">
+      {label}
+    </span>
+    <div className="text-sm text-gray-900 dark:text-gray-100">{children}</div>
+  </div>
+);
 
 const DossierTable: React.FC<Props> = ({
   title,
@@ -264,7 +258,7 @@ const DossierTable: React.FC<Props> = ({
         </div>
 
         <div className="hidden md:block text-[11px] text-gray-500 dark:text-gray-400">
-          <span className="font-semibold">Thời hạn</span> tính theo{" "}
+          Thời hạn theo{" "}
           <span className="font-mono">currentTask[0].dueDate</span>
         </div>
       </div>
@@ -274,88 +268,148 @@ const DossierTable: React.FC<Props> = ({
           Không có dữ liệu phù hợp.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left">
-            <thead className="bg-gray-50 dark:bg-gray-800/60">
-              <tr className="text-xs text-gray-500 dark:text-gray-400">
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Mã hồ sơ
-                </th>
-                <th className="px-4 py-3 font-semibold min-w-[420px]">
-                  Tên thủ tục
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Ngày hẹn trả
-                </th>
-                <th className="px-4 py-3 font-semibold min-w-[320px]">
-                  Thời hạn
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Chủ hồ sơ
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Trạng thái
-                </th>
-              </tr>
-            </thead>
+        <>
+          {/* ✅ Desktop/Large: table view (không overflow-x-auto) */}
+          <div className="hidden lg:block">
+            <table className="w-full text-left table-fixed">
+              <colgroup>
+                <col className="w-[14%]" />
+                <col className="w-[34%]" />
+                <col className="w-[14%]" />
+                <col className="w-[18%]" />
+                <col className="w-[12%]" />
+                <col className="w-[8%]" />
+              </colgroup>
 
-            <tbody className="divide-y dark:divide-gray-800">
-              {rows.map((r) => (
-                <tr
-                  key={r.key}
-                  className="text-sm hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
-                >
-                  <td className="px-4 py-3 font-mono text-xs md:text-sm whitespace-nowrap">
+              <thead className="bg-gray-50 dark:bg-gray-800/60">
+                <tr className="text-xs text-gray-500 dark:text-gray-400">
+                  <th className="px-4 py-3 font-semibold">Mã hồ sơ</th>
+                  <th className="px-4 py-3 font-semibold">Tên thủ tục</th>
+                  <th className="px-4 py-3 font-semibold">Ngày hẹn trả</th>
+                  <th className="px-4 py-3 font-semibold">Thời hạn</th>
+                  <th className="px-4 py-3 font-semibold">Chủ hồ sơ</th>
+                  <th className="px-4 py-3 font-semibold">Trạng thái</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y dark:divide-gray-800">
+                {rows.map((r) => (
+                  <tr
+                    key={r.key}
+                    className="text-sm hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+                  >
+                    <td className="px-4 py-3 font-mono text-xs whitespace-nowrap overflow-hidden text-ellipsis">
+                      <a
+                        href={r.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 dark:text-blue-400 hover:underline font-semibold"
+                        title="Mở hồ sơ trên hệ thống"
+                      >
+                        {r.code}
+                      </a>
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <div className="text-gray-900 dark:text-gray-100 line-clamp-2 break-words">
+                        {r.procedureName}
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {r.appointmentText}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-gray-600 dark:text-gray-300">
+                          Hạn xử lý: {r.dueDateText}
+                        </span>
+                        <span
+                          className={[
+                            "text-[11px] font-bold px-2 py-1 rounded-full border inline-flex w-fit",
+                            deadlineBadgeClass(r.deadlineInfo),
+                          ].join(" ")}
+                        >
+                          {r.deadlineText}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {r.ownerName}
+                    </td>
+
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className="text-[11px] font-semibold px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+                        {r.statusName}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* ✅ Mobile/Tablet: stacked card rows (không có thanh ngang) */}
+          <div className="lg:hidden divide-y dark:divide-gray-800">
+            {rows.map((r) => (
+              <div
+                key={r.key}
+                className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+              >
+                <div className="grid grid-cols-1 gap-4">
+                  <Field label="Mã hồ sơ">
                     <a
                       href={r.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-blue-600 dark:text-blue-400 hover:underline font-semibold"
-                      title="Mở hồ sơ trên hệ thống"
+                      className="text-blue-600 dark:text-blue-400 hover:underline font-mono font-semibold break-all"
                     >
                       {r.code}
                     </a>
-                  </td>
+                  </Field>
 
-                  <td className="px-4 py-3 text-gray-800 dark:text-gray-100">
-                    <div className="line-clamp-2">{r.procedureName}</div>
-                  </td>
+                  <Field label="Tên thủ tục">
+                    <div className="break-words">{r.procedureName}</div>
+                  </Field>
 
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {r.appointmentText}
-                  </td>
+                  <div className="grid grid-cols-2 gap-4">
+                    <Field label="Ngày hẹn trả">{r.appointmentText}</Field>
 
-                  {/* ✅ Thời hạn: có ngày + giờ + phút */}
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs text-gray-600 dark:text-gray-300">
-                        Due: {r.dueDateText}
+                    <Field label="Trạng thái">
+                      <span className="text-[11px] font-semibold px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 inline-flex">
+                        {r.statusName}
                       </span>
+                    </Field>
+                  </div>
 
-                      <span
-                        className={[
-                          "text-[11px] font-bold px-2 py-1 rounded-full border inline-flex w-fit",
-                          deadlineBadgeClass(r.deadlineInfo),
-                        ].join(" ")}
-                        title="So sánh currentTask[0].dueDate với thời điểm hiện tại"
-                      >
-                        {r.deadlineText}
-                      </span>
-                    </div>
-                  </td>
+                  <div className="grid grid-cols-1 gap-2">
+                    <Field label="Thời hạn">
+                      <div className="flex flex-col gap-2">
+                        <span className="text-xs text-gray-600 dark:text-gray-300">
+                          Hạn xử lý: {r.dueDateText}
+                        </span>
+                        <span
+                          className={[
+                            "text-[11px] font-bold px-2 py-1 rounded-full border inline-flex w-fit",
+                            deadlineBadgeClass(r.deadlineInfo),
+                          ].join(" ")}
+                        >
+                          {r.deadlineText}
+                        </span>
+                      </div>
+                    </Field>
 
-                  <td className="px-4 py-3 whitespace-nowrap">{r.ownerName}</td>
-
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                      {r.statusName}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    <Field label="Chủ hồ sơ">
+                      <div className="break-words">{r.ownerName}</div>
+                    </Field>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
