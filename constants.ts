@@ -14,8 +14,9 @@ import {
   X,
   User,
   Lock,
-  CheckCircle
-} from 'lucide-react';
+  CheckCircle,
+  LogOut,
+} from "lucide-react";
 
 export const DEFAULT_API_BASE_URL = ""; // same-origin
 
@@ -40,5 +41,6 @@ export const ICONS = {
   X,
   User,
   Lock,
-  CheckCircle
+  CheckCircle,
+  LogOut,
 };

@@ -3,30 +3,29 @@ import DossierTable from "./components/DossierTable";
 import LoginModal from "./components/LoginModal";
 import TokenModal from "./components/TokenModal";
 import { fetchAllDossiers } from "./services/api";
-import { DossierItem } from "./types";
-import { DEFAULT_API_BASE_URL, ICONS } from "./constants";
+import { MinistryData } from "./types";
+import { ICONS } from "./constants";
 import {
   Settings,
   RefreshCw,
-  AlertTriangle,
-  CheckCircle,
-  Lock,
   LayoutDashboard,
-  Database,
-  Server,
-  Info,
+  Building2,
+  Stethoscope,
+  Zap,
+  ChevronRight,
   Globe,
-  FileText,
-  LogOut,
+  Lock,
 } from "lucide-react";
 
 type FetchResult = {
-  dat: DossierItem[];
-  sau: DossierItem[];
-  unauthorized?: boolean;
+  boXayDung?: MinistryData;
+  boYTe?: MinistryData;
+
+  // giữ logic cũ
+  unauthorized?: boolean; // 401
+  needToken?: boolean; // token hết hạn/invalid
   networkError?: boolean;
   error?: string;
-  needToken?: boolean;
 };
 
 const App: React.FC = () => {
@@ -42,7 +41,10 @@ const App: React.FC = () => {
     return saved ? saved === "dark" : false;
   });
 
-  // Auth & Token modals
+  // Tabs
+  const [activeTab, setActiveTab] = useState<"BXD" | "BYT">("BXD");
+
+  // Auth & Token modals (giữ theo logic cũ)
   const [showLogin, setShowLogin] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
@@ -52,27 +54,28 @@ const App: React.FC = () => {
 
   // Data
   const [loading, setLoading] = useState(false);
-  const [datData, setDatData] = useState<DossierItem[]>([]);
-  const [sauData, setSauData] = useState<DossierItem[]>([]);
+  const [boXayDung, setBoXayDung] = useState<MinistryData>({
+    dangXuLy: [],
+    gap: [],
+  });
+  const [boYTe, setBoYTe] = useState<MinistryData>({
+    dangXuLy: [],
+    gap: [],
+  });
   const [hasFetched, setHasFetched] = useState(false);
 
-  // Status flags
+  // Status flags (giữ theo logic cũ)
   const [unauthorized, setUnauthorized] = useState(false);
   const [networkError, setNetworkError] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>("");
 
   // Apply Theme
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("THEME", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("THEME", "light");
-    }
+    document.documentElement.classList.toggle("dark", darkMode);
+    localStorage.setItem("THEME", darkMode ? "dark" : "light");
   }, [darkMode]);
 
-  // -------- Helpers: auth/token checks --------
+  // -------- Helpers: auth/token checks (GIỮ CŨ) --------
   const checkLoggedIn = async (): Promise<boolean> => {
     try {
       const res = await fetch("/api/auth/me", { credentials: "include" });
@@ -93,7 +96,49 @@ const App: React.FC = () => {
     }
   };
 
-  // -------- Initial load --------
+  // -------- Fetch data (GIỮ CŨ VỀ XỬ LÝ TRẠNG THÁI) --------
+  const handleRefresh = async (currentMock: boolean = useMock) => {
+    setLoading(true);
+    setErrorMsg("");
+    setUnauthorized(false);
+    setNetworkError(false);
+
+    // clear old data when loading
+    setBoXayDung({ dangXuLy: [], gap: [] });
+    setBoYTe({ dangXuLy: [], gap: [] });
+    setHasFetched(false);
+
+    const result: FetchResult = await fetchAllDossiers(
+      undefined,
+      undefined,
+      currentMock
+    );
+
+    // token hết hạn/invalid hoặc unauthorized => mở token modal
+    if (result?.needToken || result?.unauthorized) {
+      setUnauthorized(true);
+      setShowTokenModal(true);
+      setLoading(false);
+      return;
+    }
+
+    if (result?.networkError) {
+      setNetworkError(true);
+    }
+
+    if (result?.error) {
+      setErrorMsg(result.error);
+    } else {
+      // mapping data theo code mới
+      setBoXayDung(result.boXayDung || { dangXuLy: [], gap: [] });
+      setBoYTe(result.boYTe || { dangXuLy: [], gap: [] });
+    }
+
+    setHasFetched(true);
+    setLoading(false);
+  };
+
+  // -------- Initial load (GIỮ CŨ) --------
   useEffect(() => {
     (async () => {
       // Demo mode: không cần login/token
@@ -119,48 +164,7 @@ const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // -------- Fetch data --------
-  const handleRefresh = async (currentMock: boolean = useMock) => {
-    setLoading(true);
-    setErrorMsg("");
-    setUnauthorized(false);
-    setNetworkError(false);
-
-    // clear old data when loading
-    setDatData([]);
-    setSauData([]);
-    setHasFetched(false);
-
-    // Demo mode: cho phép services/api.ts trả fake
-    // Server-side mode: token = undefined
-    const result: FetchResult = await fetchAllDossiers(
-      undefined,
-      undefined,
-      currentMock
-    );
-
-    // Nếu backend báo cần token (token hết hạn/invalid) -> bật modal nhập token
-    if (result?.needToken || result?.unauthorized) {
-      setUnauthorized(true);
-      setShowTokenModal(true);
-      setLoading(false);
-      return;
-    }
-
-    if (result?.networkError) setNetworkError(true);
-
-    if (result?.error) {
-      setErrorMsg(result.error);
-    } else {
-      setDatData(result.dat || []);
-      setSauData(result.sau || []);
-    }
-
-    setHasFetched(true);
-    setLoading(false);
-  };
-
-  // -------- Login / Save token / Logout --------
+  // -------- Login / Save token / Logout (GIỮ CŨ) --------
   const onLogin = async (username: string, password: string) => {
     setLoginLoading(true);
     setLoginError("");
@@ -224,8 +228,9 @@ const App: React.FC = () => {
     try {
       await fetch("/api/auth/logout", { credentials: "include" });
     } catch {}
-    setDatData([]);
-    setSauData([]);
+
+    setBoXayDung({ dangXuLy: [], gap: [] });
+    setBoYTe({ dangXuLy: [], gap: [] });
     setHasFetched(false);
     setUnauthorized(false);
     setNetworkError(false);
@@ -235,346 +240,303 @@ const App: React.FC = () => {
     setShowLogin(true);
   };
 
-  // -------- Derived totals --------
-  const totalDat = useMemo(() => datData.length, [datData]);
-  const totalSau = useMemo(() => sauData.length, [sauData]);
-  const totalAll = useMemo(() => totalDat + totalSau, [totalDat, totalSau]);
+  // -------- Derived totals (UI mới) --------
+  const totalGapBXD = useMemo(
+    () => boXayDung.gap.length,
+    [boXayDung.gap.length]
+  );
+  const totalGapBYT = useMemo(() => boYTe.gap.length, [boYTe.gap.length]);
+  const totalGap = useMemo(
+    () => totalGapBXD + totalGapBYT,
+    [totalGapBXD, totalGapBYT]
+  );
+
+  const totalBXD = useMemo(
+    () => boXayDung.dangXuLy.length + boXayDung.gap.length,
+    [boXayDung.dangXuLy.length, boXayDung.gap.length]
+  );
+  const totalBYT = useMemo(
+    () => boYTe.dangXuLy.length + boYTe.gap.length,
+    [boYTe.dangXuLy.length, boYTe.gap.length]
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans pb-12 transition-colors duration-200">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50 transition-colors duration-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <LayoutDashboard className="text-blue-600 dark:text-blue-400 w-6 h-6" />
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">
-              Tra Cứu Hồ Sơ DVC
-            </h1>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white sm:hidden">
-              DVC
-            </h1>
-
-            {useMock && (
-              <span className="ml-2 px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs font-bold border border-yellow-200 dark:border-yellow-800">
-                DEMO MODE
-              </span>
-            )}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-600 p-2 rounded-lg text-white">
+              <LayoutDashboard size={20} />
+            </div>
+            <div className="flex flex-col leading-tight">
+              <h1 className="font-bold text-lg hidden sm:block">
+                Hệ Thống Liên Bộ
+              </h1>
+              <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                {useMock ? (
+                  <span className="font-semibold text-yellow-600 dark:text-yellow-400">
+                    DEMO MODE
+                  </span>
+                ) : showLogin ? (
+                  <span className="font-semibold text-orange-500 flex items-center gap-1">
+                    <Lock size={12} /> Chưa đăng nhập
+                  </span>
+                ) : showTokenModal ? (
+                  <span className="font-semibold text-orange-500">
+                    Cần Token
+                  </span>
+                ) : unauthorized ? (
+                  <span className="font-semibold text-red-500">
+                    401 Unauthorized
+                  </span>
+                ) : networkError ? (
+                  <span className="font-semibold text-orange-500 flex items-center gap-1">
+                    <Globe size={12} /> Lỗi kết nối
+                  </span>
+                ) : errorMsg ? (
+                  <span className="font-semibold text-orange-500">
+                    Lỗi dữ liệu
+                  </span>
+                ) : loading ? (
+                  <span className="font-semibold text-blue-500">
+                    Đang tải...
+                  </span>
+                ) : (
+                  <span className="font-semibold text-green-600">Sẵn sàng</span>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden md:flex flex-col items-end mr-4">
-              <span className="text-xs text-gray-400 dark:text-gray-500">
-                Trạng thái API
-              </span>
-              {showLogin ? (
-                <span className="text-xs font-bold text-orange-500 dark:text-orange-400 flex items-center gap-1">
-                  <Lock size={10} /> Chưa đăng nhập
-                </span>
-              ) : showTokenModal && !useMock ? (
-                <span className="text-xs font-bold text-orange-500 dark:text-orange-400 flex items-center gap-1">
-                  <ICONS.Key size={10} /> Cần Token
-                </span>
-              ) : unauthorized ? (
-                <span className="text-xs font-bold text-red-500 dark:text-red-400 flex items-center gap-1">
-                  <Lock size={10} /> 401 Unauthorized
-                </span>
-              ) : networkError ? (
-                <span className="text-xs font-bold text-orange-500 dark:text-orange-400 flex items-center gap-1">
-                  <Globe size={10} /> Lỗi Kết Nối
-                </span>
-              ) : errorMsg ? (
-                <span className="text-xs font-bold text-orange-500 dark:text-orange-400">
-                  Lỗi dữ liệu
-                </span>
-              ) : loading ? (
-                <span className="text-xs font-bold text-blue-500 dark:text-blue-400">
-                  Đang tải...
-                </span>
-              ) : useMock ? (
-                <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">
-                  Dữ liệu giả lập
-                </span>
-              ) : (
-                <span className="text-xs font-bold text-green-500 dark:text-green-400">
-                  Sẵn sàng
-                </span>
-              )}
-            </div>
-
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
               title={
                 darkMode ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"
               }
             >
-              {darkMode ? (
-                <ICONS.Sun className="w-5 h-5" />
-              ) : (
-                <ICONS.Moon className="w-5 h-5" />
-              )}
+              {darkMode ? <ICONS.Sun size={20} /> : <ICONS.Moon size={20} />}
             </button>
 
             <button
               onClick={() => handleRefresh()}
               disabled={loading || (!useMock && (showLogin || showTokenModal))}
-              className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                loading
-                  ? "animate-spin text-blue-500 dark:text-blue-400"
-                  : "text-gray-600 dark:text-gray-400"
+              className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors ${
+                loading ? "animate-spin text-blue-500" : ""
               }`}
               title="Làm mới dữ liệu"
             >
-              <RefreshCw className="w-5 h-5" />
+              <RefreshCw size={20} />
             </button>
 
             <button
               onClick={() => setShowSettings(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 text-sm font-medium text-gray-700 dark:text-gray-200 transition-all shadow-sm"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+              title="Cài đặt"
             >
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Cấu hình</span>
+              <Settings size={20} />
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Alerts */}
+      <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        {/* Alerts (giữ logic cũ, UI tối giản theo layout mới) */}
         {unauthorized && !useMock && (
-          <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-md shadow-sm">
-            <div className="flex items-start">
-              <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400 mt-0.5 mr-3" />
-              <div>
-                <h3 className="text-red-800 dark:text-red-300 font-bold">
-                  Token hết hạn / không hợp lệ
-                </h3>
-                <p className="text-red-700 dark:text-red-200 text-sm mt-1">
-                  Vui lòng nhập Bearer Token mới để hệ thống tiếp tục tự động
-                  lấy dữ liệu.
-                </p>
-                <button
-                  onClick={() => setShowTokenModal(true)}
-                  className="mt-2 text-sm font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline"
-                >
-                  Nhập token ngay
-                </button>
-              </div>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 rounded-xl p-4">
+            <div className="text-sm font-semibold text-red-700 dark:text-red-200">
+              Token hết hạn / không hợp lệ. Vui lòng nhập token mới.
             </div>
+            <button
+              onClick={() => setShowTokenModal(true)}
+              className="mt-2 text-sm font-bold text-red-600 dark:text-red-300 underline"
+            >
+              Nhập token ngay
+            </button>
           </div>
         )}
 
         {networkError && !useMock && (
-          <div className="bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500 p-4 rounded-md shadow-sm">
-            <div className="flex items-start">
-              <Globe className="w-5 h-5 text-orange-500 dark:text-orange-400 mt-0.5 mr-3" />
-              <div>
-                <h3 className="text-orange-800 dark:text-orange-300 font-bold">
-                  Lỗi Kết Nối
-                </h3>
-                <p className="text-orange-700 dark:text-orange-200 text-sm mt-1">
-                  Không thể kết nối tới Backend. Kiểm tra mạng hoặc API upstream
-                  đang chậm.
-                </p>
-                <button
-                  onClick={() => setUseMock(true)}
-                  className="mt-3 text-sm font-bold text-orange-800 dark:text-orange-300 hover:text-orange-900 dark:hover:text-orange-200 underline flex items-center gap-1"
-                >
-                  <Database className="w-4 h-4" /> Bật Chế độ Demo
-                </button>
-              </div>
+          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-900/40 rounded-xl p-4">
+            <div className="text-sm font-semibold text-orange-800 dark:text-orange-200">
+              Không thể kết nối tới Backend. Kiểm tra mạng hoặc upstream đang
+              chậm.
             </div>
+            <button
+              onClick={() => {
+                setUseMock(true);
+                localStorage.setItem("USE_MOCK", "true");
+                handleRefresh(true);
+              }}
+              className="mt-2 text-sm font-bold text-orange-700 dark:text-orange-300 underline"
+            >
+              Bật chế độ Demo
+            </button>
           </div>
         )}
 
         {errorMsg && !loading && (
-          <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-md shadow-sm">
-            <div className="flex items-start">
-              <ICONS.AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 mr-3" />
-              <div>
-                <h3 className="text-red-800 dark:text-red-300 font-bold">
-                  Lỗi
-                </h3>
-                <p className="text-red-700 dark:text-red-200 text-sm mt-1">
-                  {errorMsg}
-                </p>
-              </div>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 rounded-xl p-4">
+            <div className="text-sm font-semibold text-red-700 dark:text-red-200">
+              Lỗi: {errorMsg}
             </div>
           </div>
         )}
 
-        {/* Global Summary */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-blue-100 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-white dark:from-gray-800 dark:to-gray-800 transition-colors">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
-                Tổng Hồ Sơ
-              </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {useMock
-                  ? "Dữ liệu giả lập (Demo)"
-                  : "Tổng hợp từ API Đạt & Sáu (token lưu trên server)"}
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-sm border dark:border-gray-800">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                TỔNG HỒ SƠ GẤP
               </p>
+              <Zap size={14} className="text-red-500" fill="currentColor" />
             </div>
-            <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">
-              {loading ? "..." : totalAll.toLocaleString("vi-VN")}
-            </div>
+            <p className="text-2xl font-bold text-red-600 mt-1">
+              {loading ? "..." : totalGap}
+            </p>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600 p-4 flex items-center gap-3 transition-colors">
-              <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30">
-                <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  API Đạt
-                </div>
-                <div className="text-lg font-bold text-gray-900 dark:text-white">
-                  {loading ? "..." : totalDat.toLocaleString("vi-VN")}
-                </div>
-              </div>
+          <div className="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-sm border dark:border-gray-800">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                BỘ XÂY DỰNG
+              </p>
+              <Building2 size={14} className="text-blue-500" />
             </div>
+            <p className="text-2xl font-bold text-blue-600 mt-1">
+              {loading ? "..." : totalBXD}
+            </p>
+          </div>
 
-            <div className="bg-white dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600 p-4 flex items-center gap-3 transition-colors">
-              <div className="p-2 rounded-lg bg-violet-50 dark:bg-violet-900/30">
-                <FileText className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-              </div>
-              <div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  API Sáu
-                </div>
-                <div className="text-lg font-bold text-gray-900 dark:text-white">
-                  {loading ? "..." : totalSau.toLocaleString("vi-VN")}
-                </div>
-              </div>
+          <div className="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-sm border dark:border-gray-800">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                BỘ Y TẾ
+              </p>
+              <Stethoscope size={14} className="text-emerald-500" />
             </div>
+            <p className="text-2xl font-bold text-emerald-600 mt-1">
+              {loading ? "..." : totalBYT}
+            </p>
+          </div>
+
+          <div className="bg-white dark:bg-gray-900 p-4 rounded-xl shadow-sm border dark:border-gray-800 hidden md:block">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                TRẠNG THÁI
+              </p>
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  loading ? "bg-yellow-500 animate-pulse" : "bg-green-500"
+                }`}
+              />
+            </div>
+            <p className="text-sm font-bold mt-2 uppercase tracking-tight">
+              {loading
+                ? "Đang cập nhật"
+                : hasFetched
+                ? "Đã đồng bộ"
+                : "Chưa tải"}
+            </p>
           </div>
         </div>
 
-        {/* Loading */}
-        {loading && (
-          <div className="mt-2 flex items-center space-x-3 text-sm text-gray-600 dark:text-gray-400 animate-pulse">
-            <ICONS.Loader2 className="h-4 w-4 animate-spin" />
-            <span>Đang tải dữ liệu từ API Đạt & Sáu...</span>
-          </div>
-        )}
+        {/* Tab Navigation */}
+        <div className="flex p-1 bg-gray-200/50 dark:bg-gray-800/50 rounded-xl max-w-2xl mx-auto shadow-inner">
+          <button
+            onClick={() => setActiveTab("BXD")}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold text-sm transition-all ${
+              activeTab === "BXD"
+                ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-md scale-[1.02]"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            }`}
+          >
+            <Building2 size={18} />
+            BỘ XÂY DỰNG
+            {totalGapBXD > 0 && (
+              <span className="flex h-2 w-2 rounded-full bg-red-500" />
+            )}
+          </button>
 
-        {/* Tables */}
+          <button
+            onClick={() => setActiveTab("BYT")}
+            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold text-sm transition-all ${
+              activeTab === "BYT"
+                ? "bg-white dark:bg-gray-700 text-emerald-600 dark:text-emerald-400 shadow-md scale-[1.02]"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            }`}
+          >
+            <Stethoscope size={18} />
+            BỘ Y TẾ
+            {totalGapBYT > 0 && (
+              <span className="flex h-2 w-2 rounded-full bg-red-500" />
+            )}
+          </button>
+        </div>
+
+        {/* Tab Content */}
         {hasFetched && !loading && !errorMsg && (
-          <div className="animate-fade-in space-y-8">
-            <DossierTable title="Danh sách hồ sơ (API Đạt)" data={datData} />
-            <DossierTable title="Danh sách hồ sơ (API Sáu)" data={sauData} />
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {activeTab === "BXD" ? (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-1 bg-blue-600 rounded-full"></div>
+                    <h2 className="text-lg font-bold uppercase tracking-tight">
+                      Hệ thống Bộ Xây Dựng
+                    </h2>
+                  </div>
+                  <div className="flex items-center text-xs font-medium text-gray-400 gap-1">
+                    Thông tin <ChevronRight size={14} /> Hồ sơ
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                  <DossierTable
+                    title="Hồ sơ cần xử lý (GẤP)"
+                    data={boXayDung.gap}
+                    variant="urgent"
+                  />
+                  <DossierTable
+                    title="Hồ sơ đang xử lý"
+                    data={boXayDung.dangXuLy}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-1 bg-emerald-600 rounded-full"></div>
+                    <h2 className="text-lg font-bold uppercase tracking-tight">
+                      Hệ thống Bộ Y Tế
+                    </h2>
+                  </div>
+                  <div className="flex items-center text-xs font-medium text-gray-400 gap-1">
+                    Thông tin <ChevronRight size={14} /> Hồ sơ
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                  <DossierTable
+                    title="Hồ sơ cần xử lý (GẤP)"
+                    data={boYTe.gap}
+                    variant="urgent"
+                  />
+                  <DossierTable
+                    title="Hồ sơ đang xử lý"
+                    data={boYTe.dangXuLy}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
 
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in flex flex-col max-h-[90vh] transition-colors">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Cấu hình hệ thống
-              </h2>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <span className="sr-only">Đóng</span>
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="overflow-y-auto space-y-6 px-1 pb-2">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
-                  <Server className="w-5 h-5" />
-                  <span className="font-semibold text-sm">Kết nối Backend</span>
-                </div>
-
-                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
-                  <Info className="w-4 h-4 mt-0.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
-                  <span>
-                    Backend chạy chung Vercel API Routes:{" "}
-                    <strong className="font-mono text-gray-700 dark:text-gray-300">
-                      /api/
-                    </strong>
-                  </span>
-                </div>
-
-                <div className="bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 rounded-lg p-3 text-sm text-gray-700 dark:text-gray-200">
-                  Token được lưu trên server (MongoDB). Nếu token hết hạn hệ
-                  thống sẽ yêu cầu nhập lại.
-                </div>
-
-                <button
-                  onClick={() => {
-                    setShowSettings(false);
-                    setShowTokenModal(true);
-                  }}
-                  className="w-full flex justify-center items-center py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Nhập / cập nhật token
-                </button>
-              </div>
-
-              <hr className="border-gray-100 dark:border-gray-700" />
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-400">
-                    <Database className="w-5 h-5" />
-                    <span className="font-semibold text-sm">Chế độ Demo</span>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      id="mock-toggle"
-                      defaultChecked={useMock}
-                      className="sr-only peer"
-                      onChange={(e) => {
-                        const v = e.target.checked;
-                        setUseMock(v);
-                        localStorage.setItem("USE_MOCK", String(v));
-                      }}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
-                  </label>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Bật chế độ này để test UI (không cần đăng nhập/token).
-                </p>
-              </div>
-
-              <hr className="border-gray-100 dark:border-gray-700" />
-
-              <button
-                onClick={onLogout}
-                className="w-full flex justify-center items-center py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium text-gray-800 dark:text-gray-100 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Đăng xuất
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modals */}
+      {/* Modals (GIỮ CŨ) */}
       <LoginModal
         isOpen={showLogin && !useMock}
         isLoading={loginLoading}
@@ -591,6 +553,76 @@ const App: React.FC = () => {
           !loading && hasFetched ? () => setShowTokenModal(false) : undefined
         }
       />
+
+      {/* Settings */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 w-full max-w-md shadow-2xl border dark:border-gray-800">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-xl font-bold">Cài đặt hệ thống</h3>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+              >
+                <ICONS.X />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <div className="flex flex-col">
+                  <span className="font-bold text-sm">Chế độ Demo</span>
+                  <span className="text-xs text-gray-500">
+                    Sử dụng dữ liệu giả lập để test UI
+                  </span>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useMock}
+                    onChange={async (e) => {
+                      const isChecked = e.target.checked;
+                      setUseMock(isChecked);
+                      localStorage.setItem("USE_MOCK", String(isChecked));
+
+                      // khi bật demo thì không cần login/token
+                      if (isChecked) {
+                        setShowLogin(false);
+                        setShowTokenModal(false);
+                        await handleRefresh(true);
+                      } else {
+                        // tắt demo: chạy lại init flow cũ
+                        const isLogged = await checkLoggedIn();
+                        if (!isLogged) {
+                          setShowLogin(true);
+                          return;
+                        }
+                        const hasToken = await checkHasToken();
+                        if (!hasToken) {
+                          setShowTokenModal(true);
+                          return;
+                        }
+                        await handleRefresh(false);
+                      }
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              <button
+                onClick={onLogout}
+                className="w-full py-4 flex items-center justify-center gap-2 font-bold bg-red-50 text-red-600 dark:bg-red-900/10 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/20 transition-all border border-red-100 dark:border-red-900/30"
+              >
+                <ICONS.LogOut size={18} />
+                Đăng xuất tài khoản
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
