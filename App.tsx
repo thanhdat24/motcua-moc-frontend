@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import DossierTable from './components/DossierTable';
-import LoginModal from './components/LoginModal';
-import TokenModal from './components/TokenModal';
-import { fetchAllDossiers } from './services/api';
-import { DossierItem } from './types';
-import { DEFAULT_API_BASE_URL, ICONS } from './constants';
+import React, { useEffect, useMemo, useState } from "react";
+import DossierTable from "./components/DossierTable";
+import LoginModal from "./components/LoginModal";
+import TokenModal from "./components/TokenModal";
+import { fetchAllDossiers } from "./services/api";
+import { DossierItem } from "./types";
+import { DEFAULT_API_BASE_URL, ICONS } from "./constants";
 import {
   Settings,
   RefreshCw,
@@ -18,7 +18,7 @@ import {
   Globe,
   FileText,
   LogOut,
-} from 'lucide-react';
+} from "lucide-react";
 
 type FetchResult = {
   dat: DossierItem[];
@@ -31,13 +31,15 @@ type FetchResult = {
 
 const App: React.FC = () => {
   // Demo mode
-  const [useMock, setUseMock] = useState<boolean>(() => localStorage.getItem('USE_MOCK') === 'true');
+  const [useMock, setUseMock] = useState<boolean>(
+    () => localStorage.getItem("USE_MOCK") === "true"
+  );
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
   // Theme
   const [darkMode, setDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('THEME');
-    return saved ? saved === 'dark' : false;
+    const saved = localStorage.getItem("THEME");
+    return saved ? saved === "dark" : false;
   });
 
   // Auth & Token modals
@@ -45,8 +47,8 @@ const App: React.FC = () => {
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [tokenSaving, setTokenSaving] = useState(false);
-  const [loginError, setLoginError] = useState('');
-  const [tokenError, setTokenError] = useState('');
+  const [loginError, setLoginError] = useState("");
+  const [tokenError, setTokenError] = useState("");
 
   // Data
   const [loading, setLoading] = useState(false);
@@ -57,23 +59,23 @@ const App: React.FC = () => {
   // Status flags
   const [unauthorized, setUnauthorized] = useState(false);
   const [networkError, setNetworkError] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string>('');
+  const [errorMsg, setErrorMsg] = useState<string>("");
 
   // Apply Theme
   useEffect(() => {
     if (darkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('THEME', 'dark');
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("THEME", "dark");
     } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('THEME', 'light');
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("THEME", "light");
     }
   }, [darkMode]);
 
   // -------- Helpers: auth/token checks --------
   const checkLoggedIn = async (): Promise<boolean> => {
     try {
-      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      const res = await fetch("/api/auth/me", { credentials: "include" });
       return res.ok;
     } catch {
       return false;
@@ -82,7 +84,7 @@ const App: React.FC = () => {
 
   const checkHasToken = async (): Promise<boolean> => {
     try {
-      const res = await fetch('/api/token', { credentials: 'include' });
+      const res = await fetch("/api/token", { credentials: "include" });
       if (!res.ok) return false;
       const j = await res.json().catch(() => ({}));
       return !!j?.hasToken;
@@ -120,7 +122,7 @@ const App: React.FC = () => {
   // -------- Fetch data --------
   const handleRefresh = async (currentMock: boolean = useMock) => {
     setLoading(true);
-    setErrorMsg('');
+    setErrorMsg("");
     setUnauthorized(false);
     setNetworkError(false);
 
@@ -161,18 +163,18 @@ const App: React.FC = () => {
   // -------- Login / Save token / Logout --------
   const onLogin = async (username: string, password: string) => {
     setLoginLoading(true);
-    setLoginError('');
+    setLoginError("");
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ username, password }),
       });
 
       if (!res.ok) {
-        setLoginError('Sai tài khoản hoặc mật khẩu.');
+        setLoginError("Sai tài khoản hoặc mật khẩu.");
         setLoginLoading(false);
         return;
       }
@@ -185,25 +187,25 @@ const App: React.FC = () => {
       if (!hasToken) setShowTokenModal(true);
       else await handleRefresh(false);
     } catch {
-      setLoginError('Lỗi mạng khi đăng nhập.');
+      setLoginError("Lỗi mạng khi đăng nhập.");
       setLoginLoading(false);
     }
   };
 
   const onSaveToken = async (token: string) => {
     setTokenSaving(true);
-    setTokenError('');
+    setTokenError("");
 
     try {
-      const res = await fetch('/api/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+      const res = await fetch("/api/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ token }),
       });
 
       if (!res.ok) {
-        setTokenError('Không lưu được token. Kiểm tra lại.');
+        setTokenError("Không lưu được token. Kiểm tra lại.");
         setTokenSaving(false);
         return;
       }
@@ -213,21 +215,21 @@ const App: React.FC = () => {
 
       await handleRefresh(false);
     } catch {
-      setTokenError('Lỗi mạng khi lưu token.');
+      setTokenError("Lỗi mạng khi lưu token.");
       setTokenSaving(false);
     }
   };
 
   const onLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { credentials: 'include' });
+      await fetch("/api/auth/logout", { credentials: "include" });
     } catch {}
     setDatData([]);
     setSauData([]);
     setHasFetched(false);
     setUnauthorized(false);
     setNetworkError(false);
-    setErrorMsg('');
+    setErrorMsg("");
     setShowSettings(false);
     setShowTokenModal(false);
     setShowLogin(true);
@@ -240,14 +242,17 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 font-sans pb-12 transition-colors duration-200">
-      
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <LayoutDashboard className="text-blue-600 dark:text-blue-400 w-6 h-6" />
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">Tra Cứu Hồ Sơ DVC</h1>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white sm:hidden">DVC</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white hidden sm:block">
+              Tra Cứu Hồ Sơ DVC
+            </h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white sm:hidden">
+              DVC
+            </h1>
 
             {useMock && (
               <span className="ml-2 px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs font-bold border border-yellow-200 dark:border-yellow-800">
@@ -258,7 +263,9 @@ const App: React.FC = () => {
 
           <div className="flex items-center gap-3">
             <div className="hidden md:flex flex-col items-end mr-4">
-              <span className="text-xs text-gray-400 dark:text-gray-500">Trạng thái API</span>
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                Trạng thái API
+              </span>
               {showLogin ? (
                 <span className="text-xs font-bold text-orange-500 dark:text-orange-400 flex items-center gap-1">
                   <Lock size={10} /> Chưa đăng nhập
@@ -276,29 +283,45 @@ const App: React.FC = () => {
                   <Globe size={10} /> Lỗi Kết Nối
                 </span>
               ) : errorMsg ? (
-                <span className="text-xs font-bold text-orange-500 dark:text-orange-400">Lỗi dữ liệu</span>
+                <span className="text-xs font-bold text-orange-500 dark:text-orange-400">
+                  Lỗi dữ liệu
+                </span>
               ) : loading ? (
-                <span className="text-xs font-bold text-blue-500 dark:text-blue-400">Đang tải...</span>
+                <span className="text-xs font-bold text-blue-500 dark:text-blue-400">
+                  Đang tải...
+                </span>
               ) : useMock ? (
-                <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">Dữ liệu giả lập</span>
+                <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">
+                  Dữ liệu giả lập
+                </span>
               ) : (
-                <span className="text-xs font-bold text-green-500 dark:text-green-400">Sẵn sàng</span>
+                <span className="text-xs font-bold text-green-500 dark:text-green-400">
+                  Sẵn sàng
+                </span>
               )}
             </div>
 
             <button
               onClick={() => setDarkMode(!darkMode)}
               className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
-              title={darkMode ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
+              title={
+                darkMode ? "Chuyển sang chế độ sáng" : "Chuyển sang chế độ tối"
+              }
             >
-              {darkMode ? <ICONS.Sun className="w-5 h-5" /> : <ICONS.Moon className="w-5 h-5" />}
+              {darkMode ? (
+                <ICONS.Sun className="w-5 h-5" />
+              ) : (
+                <ICONS.Moon className="w-5 h-5" />
+              )}
             </button>
 
             <button
               onClick={() => handleRefresh()}
               disabled={loading || (!useMock && (showLogin || showTokenModal))}
               className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-                loading ? 'animate-spin text-blue-500 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'
+                loading
+                  ? "animate-spin text-blue-500 dark:text-blue-400"
+                  : "text-gray-600 dark:text-gray-400"
               }`}
               title="Làm mới dữ liệu"
             >
@@ -323,9 +346,12 @@ const App: React.FC = () => {
             <div className="flex items-start">
               <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400 mt-0.5 mr-3" />
               <div>
-                <h3 className="text-red-800 dark:text-red-300 font-bold">Token hết hạn / không hợp lệ</h3>
+                <h3 className="text-red-800 dark:text-red-300 font-bold">
+                  Token hết hạn / không hợp lệ
+                </h3>
                 <p className="text-red-700 dark:text-red-200 text-sm mt-1">
-                  Vui lòng nhập Bearer Token mới để hệ thống tiếp tục tự động lấy dữ liệu.
+                  Vui lòng nhập Bearer Token mới để hệ thống tiếp tục tự động
+                  lấy dữ liệu.
                 </p>
                 <button
                   onClick={() => setShowTokenModal(true)}
@@ -343,9 +369,12 @@ const App: React.FC = () => {
             <div className="flex items-start">
               <Globe className="w-5 h-5 text-orange-500 dark:text-orange-400 mt-0.5 mr-3" />
               <div>
-                <h3 className="text-orange-800 dark:text-orange-300 font-bold">Lỗi Kết Nối</h3>
+                <h3 className="text-orange-800 dark:text-orange-300 font-bold">
+                  Lỗi Kết Nối
+                </h3>
                 <p className="text-orange-700 dark:text-orange-200 text-sm mt-1">
-                  Không thể kết nối tới Backend. Kiểm tra mạng hoặc API upstream đang chậm.
+                  Không thể kết nối tới Backend. Kiểm tra mạng hoặc API upstream
+                  đang chậm.
                 </p>
                 <button
                   onClick={() => setUseMock(true)}
@@ -363,8 +392,12 @@ const App: React.FC = () => {
             <div className="flex items-start">
               <ICONS.AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 mr-3" />
               <div>
-                <h3 className="text-red-800 dark:text-red-300 font-bold">Lỗi</h3>
-                <p className="text-red-700 dark:text-red-200 text-sm mt-1">{errorMsg}</p>
+                <h3 className="text-red-800 dark:text-red-300 font-bold">
+                  Lỗi
+                </h3>
+                <p className="text-red-700 dark:text-red-200 text-sm mt-1">
+                  {errorMsg}
+                </p>
               </div>
             </div>
           </div>
@@ -374,13 +407,17 @@ const App: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-6 border border-blue-100 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-white dark:from-gray-800 dark:to-gray-800 transition-colors">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">Tổng Hồ Sơ</h2>
+              <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
+                Tổng Hồ Sơ
+              </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {useMock ? 'Dữ liệu giả lập (Demo)' : 'Tổng hợp từ API Đạt & Sáu (token lưu trên server)'}
+                {useMock
+                  ? "Dữ liệu giả lập (Demo)"
+                  : "Tổng hợp từ API Đạt & Sáu (token lưu trên server)"}
               </p>
             </div>
             <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">
-              {loading ? '...' : totalAll.toLocaleString('vi-VN')}
+              {loading ? "..." : totalAll.toLocaleString("vi-VN")}
             </div>
           </div>
 
@@ -390,9 +427,11 @@ const App: React.FC = () => {
                 <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">API Đạt</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  API Đạt
+                </div>
                 <div className="text-lg font-bold text-gray-900 dark:text-white">
-                  {loading ? '...' : totalDat.toLocaleString('vi-VN')}
+                  {loading ? "..." : totalDat.toLocaleString("vi-VN")}
                 </div>
               </div>
             </div>
@@ -402,9 +441,11 @@ const App: React.FC = () => {
                 <FileText className="w-5 h-5 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">API Sáu</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  API Sáu
+                </div>
                 <div className="text-lg font-bold text-gray-900 dark:text-white">
-                  {loading ? '...' : totalSau.toLocaleString('vi-VN')}
+                  {loading ? "..." : totalSau.toLocaleString("vi-VN")}
                 </div>
               </div>
             </div>
@@ -433,11 +474,26 @@ const App: React.FC = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in flex flex-col max-h-[90vh] transition-colors">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Cấu hình hệ thống</h2>
-              <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Cấu hình hệ thống
+              </h2>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
                 <span className="sr-only">Đóng</span>
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -452,12 +508,16 @@ const App: React.FC = () => {
                 <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
                   <Info className="w-4 h-4 mt-0.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                   <span>
-                    Backend chạy chung Vercel API Routes: <strong className="font-mono text-gray-700 dark:text-gray-300">/api/</strong>
+                    Backend chạy chung Vercel API Routes:{" "}
+                    <strong className="font-mono text-gray-700 dark:text-gray-300">
+                      /api/
+                    </strong>
                   </span>
                 </div>
 
                 <div className="bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 rounded-lg p-3 text-sm text-gray-700 dark:text-gray-200">
-                  Token được lưu trên server (MongoDB). Nếu token hết hạn hệ thống sẽ yêu cầu nhập lại.
+                  Token được lưu trên server (MongoDB). Nếu token hết hạn hệ
+                  thống sẽ yêu cầu nhập lại.
                 </div>
 
                 <button
@@ -489,7 +549,7 @@ const App: React.FC = () => {
                       onChange={(e) => {
                         const v = e.target.checked;
                         setUseMock(v);
-                        localStorage.setItem('USE_MOCK', String(v));
+                        localStorage.setItem("USE_MOCK", String(v));
                       }}
                     />
                     <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
@@ -527,7 +587,9 @@ const App: React.FC = () => {
         isLoading={tokenSaving}
         error={tokenError}
         onSaveToken={onSaveToken}
-        onClose={!loading && hasFetched ? () => setShowTokenModal(false) : undefined} 
+        onClose={
+          !loading && hasFetched ? () => setShowTokenModal(false) : undefined
+        }
       />
     </div>
   );
