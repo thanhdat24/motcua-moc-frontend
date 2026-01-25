@@ -122,7 +122,7 @@ const App: React.FC = () => {
     if (result?.needToken || result?.unauthorized) {
       setUnauthorized(true);
       setTargetMinistry(activeTab);
-      setShowTokenModal(true);
+      // setShowTokenModal(true);
       setLoading(false);
       return;
     }
@@ -487,7 +487,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Tab Content */}
-        {!loading && !errorMsg && (
+        {hasFetched && !loading && !errorMsg && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {activeTab === "BXD" ? (
               <div className="space-y-6">
@@ -554,7 +554,7 @@ const App: React.FC = () => {
         onLogin={onLogin}
       />
 
-      <TokenModal
+      {/* <TokenModal
         isOpen={showTokenModal && !useMock}
         isLoading={tokenSaving}
         error={tokenError}
@@ -562,6 +562,13 @@ const App: React.FC = () => {
         onClose={
           !loading && hasFetched ? () => setShowTokenModal(false) : undefined
         }
+      /> */}
+      <TokenModal
+        isOpen={showTokenModal}
+        targetMinistry={targetMinistry || "BXD"}
+        onSaveToken={onSaveToken}
+        onClose={() => setShowTokenModal(false)}
+        isLoading={loading}
       />
 
       {/* Settings */}
