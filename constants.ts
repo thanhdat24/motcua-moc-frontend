@@ -16,6 +16,8 @@ import {
   Lock,
   CheckCircle,
   LogOut,
+  Database,
+  Server,Info
 } from "lucide-react";
 
 export const DEFAULT_API_BASE_URL = ""; // same-origin
@@ -42,5 +44,5 @@ export const ICONS = {
   User,
   Lock,
   CheckCircle,
-  LogOut,
+  LogOut,Database,Server,Info
 };

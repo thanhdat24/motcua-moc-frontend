@@ -555,69 +555,126 @@ const App: React.FC = () => {
       />
 
       {/* Settings */}
+      {/* Settings Modal - GIỮ CODE CŨ */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 w-full max-w-md shadow-2xl border dark:border-gray-800">
-            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-xl font-bold">Cài đặt hệ thống</h3>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm transition-opacity">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in flex flex-col max-h-[90vh] transition-colors">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Cấu hình hệ thống
+              </h2>
               <button
                 onClick={() => setShowSettings(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
-                <ICONS.X />
+                <span className="sr-only">Đóng</span>
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
               </button>
             </div>
 
-            <div className="space-y-6">
-              <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                <div className="flex flex-col">
-                  <span className="font-bold text-sm">Chế độ Demo</span>
-                  <span className="text-xs text-gray-500">
-                    Sử dụng dữ liệu giả lập để test UI
+            <div className="overflow-y-auto space-y-6 px-1 pb-2">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
+                  <Server className="w-5 h-5" />
+                  <span className="font-semibold text-sm">Kết nối Backend</span>
+                </div>
+
+                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
+                  <Info className="w-4 h-4 mt-0.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+                  <span>
+                    Backend chạy chung Vercel API Routes:{" "}
+                    <strong className="font-mono text-gray-700 dark:text-gray-300">
+                      /api/
+                    </strong>
                   </span>
                 </div>
 
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={useMock}
-                    onChange={async (e) => {
-                      const isChecked = e.target.checked;
-                      setUseMock(isChecked);
-                      localStorage.setItem("USE_MOCK", String(isChecked));
+                <div className="bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-600 rounded-lg p-3 text-sm text-gray-700 dark:text-gray-200">
+                  Token được lưu trên server (MongoDB). Nếu token hết hạn hệ
+                  thống sẽ yêu cầu nhập lại.
+                </div>
 
-                      // khi bật demo thì không cần login/token
-                      if (isChecked) {
-                        setShowLogin(false);
-                        setShowTokenModal(false);
-                        await handleRefresh(true);
-                      } else {
-                        // tắt demo: chạy lại init flow cũ
-                        const isLogged = await checkLoggedIn();
-                        if (!isLogged) {
-                          setShowLogin(true);
-                          return;
-                        }
-                        const hasToken = await checkHasToken();
-                        if (!hasToken) {
-                          setShowTokenModal(true);
-                          return;
-                        }
-                        await handleRefresh(false);
-                      }
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
+                <button
+                  onClick={() => {
+                    setShowSettings(false);
+                    setShowTokenModal(true);
+                  }}
+                  className="w-full flex justify-center items-center py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Nhập / cập nhật token
+                </button>
               </div>
+
+              <hr className="border-gray-100 dark:border-gray-700" />
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-400">
+                    <Database className="w-5 h-5" />
+                    <span className="font-semibold text-sm">Chế độ Demo</span>
+                  </div>
+
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="mock-toggle"
+                      checked={useMock}
+                      className="sr-only peer"
+                      onChange={async (e) => {
+                        const v = e.target.checked;
+                        setUseMock(v);
+                        localStorage.setItem("USE_MOCK", String(v));
+
+                        // Giữ hành vi hợp lý: bật demo -> refresh demo; tắt demo -> chạy lại flow login/token
+                        if (v) {
+                          setShowLogin(false);
+                          setShowTokenModal(false);
+                          await handleRefresh(true);
+                        } else {
+                          const isLogged = await checkLoggedIn();
+                          if (!isLogged) {
+                            setShowLogin(true);
+                            return;
+                          }
+                          const hasToken = await checkHasToken();
+                          if (!hasToken) {
+                            setShowTokenModal(true);
+                            return;
+                          }
+                          await handleRefresh(false);
+                        }
+                      }}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
+                  </label>
+                </div>
+
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Bật chế độ này để test UI (không cần đăng nhập/token).
+                </p>
+              </div>
+
+              <hr className="border-gray-100 dark:border-gray-700" />
 
               <button
                 onClick={onLogout}
-                className="w-full py-4 flex items-center justify-center gap-2 font-bold bg-red-50 text-red-600 dark:bg-red-900/10 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/20 transition-all border border-red-100 dark:border-red-900/30"
+                className="w-full flex justify-center items-center py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium text-gray-800 dark:text-gray-100 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
-                <ICONS.LogOut size={18} />
-                Đăng xuất tài khoản
+                <ICONS.LogOut className="w-4 h-4 mr-2" />
+                Đăng xuất
               </button>
             </div>
           </div>
