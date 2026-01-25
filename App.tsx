@@ -51,7 +51,7 @@ const App: React.FC = () => {
   const [tokenSaving, setTokenSaving] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [tokenError, setTokenError] = useState("");
-
+  const [tokenSaving, setTokenSaving] = useState(false);
   const [targetMinistry, setTargetMinistry] = useState<"BXD" | "BYT" | null>(
     null
   );
@@ -236,7 +236,7 @@ const App: React.FC = () => {
   //   }
   // };
 
-  const onSaveToken = async (tokenBXD: string, tokenBYT: string) => {
+  const onSaveToken = async (token: string) => {
     setTokenSaving(true);
     setTokenError("");
 
@@ -247,24 +247,22 @@ const App: React.FC = () => {
         return v.toLowerCase().startsWith("bearer ") ? v : `Bearer ${v}`;
       };
 
-      const bxd = normalize(tokenBXD);
-      const byt = normalize(tokenBYT);
-
-      if (!bxd || !byt) {
-        setTokenError("Vui lòng nhập đủ token BXD và BYT.");
+      const cleaned = normalize(token);
+      if (!cleaned) {
+        setTokenError("Token không hợp lệ.");
         setTokenSaving(false);
         return;
       }
 
-      localStorage.setItem(LS_TOKEN_BXD, bxd);
-      localStorage.setItem(LS_TOKEN_BYT, byt);
+      const key =
+        (targetMinistry || "BXD") === "BXD" ? "TOKEN_BXD" : "TOKEN_BYT";
+      localStorage.setItem(key, cleaned);
 
       setShowTokenModal(false);
-      setTokenSaving(false);
-
       await handleRefresh(false);
     } catch {
-      setTokenError("Lỗi khi lưu token vào localStorage.");
+      setTokenError("Lỗi khi lưu token.");
+    } finally {
       setTokenSaving(false);
     }
   };
@@ -603,7 +601,7 @@ const App: React.FC = () => {
         targetMinistry={targetMinistry || "BXD"}
         onSaveToken={onSaveToken}
         onClose={() => setShowTokenModal(false)}
-        isLoading={loading}
+        isLoading={tokenSaving} // ✅ đổi chỗ này
       />
 
       {/* Settings */}
