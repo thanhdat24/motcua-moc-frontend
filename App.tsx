@@ -55,6 +55,8 @@ const App: React.FC = () => {
   const [targetMinistry, setTargetMinistry] = useState<"BXD" | "BYT" | null>(
     null
   );
+  const LS_TOKEN_BXD = "TOKEN_BXD";
+  const LS_TOKEN_BYT = "TOKEN_BYT";
 
   // Data
   const [loading, setLoading] = useState(false);
@@ -206,30 +208,63 @@ const App: React.FC = () => {
     }
   };
 
-  const onSaveToken = async (token: string) => {
+  // const onSaveToken = async (token: string) => {
+  //   setTokenSaving(true);
+  //   setTokenError("");
+
+  //   try {
+  //     const res = await fetch("/api/token", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       credentials: "include",
+  //       body: JSON.stringify({ token }),
+  //     });
+
+  //     if (!res.ok) {
+  //       setTokenError("Không lưu được token. Kiểm tra lại.");
+  //       setTokenSaving(false);
+  //       return;
+  //     }
+
+  //     setShowTokenModal(false);
+  //     setTokenSaving(false);
+
+  //     await handleRefresh(false);
+  //   } catch {
+  //     setTokenError("Lỗi mạng khi lưu token.");
+  //     setTokenSaving(false);
+  //   }
+  // };
+
+  const onSaveToken = async (tokenBXD: string, tokenBYT: string) => {
     setTokenSaving(true);
     setTokenError("");
 
     try {
-      const res = await fetch("/api/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ token }),
-      });
+      const normalize = (t: string) => {
+        const v = (t || "").trim();
+        if (!v) return "";
+        return v.toLowerCase().startsWith("bearer ") ? v : `Bearer ${v}`;
+      };
 
-      if (!res.ok) {
-        setTokenError("Không lưu được token. Kiểm tra lại.");
+      const bxd = normalize(tokenBXD);
+      const byt = normalize(tokenBYT);
+
+      if (!bxd || !byt) {
+        setTokenError("Vui lòng nhập đủ token BXD và BYT.");
         setTokenSaving(false);
         return;
       }
+
+      localStorage.setItem(LS_TOKEN_BXD, bxd);
+      localStorage.setItem(LS_TOKEN_BYT, byt);
 
       setShowTokenModal(false);
       setTokenSaving(false);
 
       await handleRefresh(false);
     } catch {
-      setTokenError("Lỗi mạng khi lưu token.");
+      setTokenError("Lỗi khi lưu token vào localStorage.");
       setTokenSaving(false);
     }
   };
