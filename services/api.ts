@@ -4,6 +4,12 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const createEmptyMinistry = (): MinistryData => ({ dangXuLy: [], gap: [] });
 
+const normalizeBearer = (t: string) => {
+  const v = (t || "").trim();
+  if (!v) return "";
+  return v.toLowerCase().startsWith("bearer ") ? v : `Bearer ${v}`;
+};
+
 export const fetchAllDossiers = async (
   _token?: string,
   _baseUrl?: string,
@@ -42,31 +48,51 @@ export const fetchAllDossiers = async (
   }
 
   try {
-    const res = await fetch("/api/dossiers", {
-      method: "POST",
-      credentials: "include",
-    });
+    // ✅ LẤY TOKEN TỪ LOCAL STORAGE
+    const tokenBXD = normalizeBearer(localStorage.getItem("TOKEN_BXD") || "");
+    const tokenBYT = normalizeBearer(localStorage.getItem("TOKEN_BYT") || "");
 
-    if (res.status === 401) {
+    // Nếu thiếu token -> báo cần token (để mở modal)
+    if (!tokenBXD || !tokenBYT) {
       return {
         boXayDung: createEmptyMinistry(),
         boYTe: createEmptyMinistry(),
-        error: "Cần nhập token hoặc token đã hết hạn.",
+        error: "Cần nhập token BXD và BYT.",
         unauthorized: true,
         needToken: true,
       };
     }
 
+    const res = await fetch("/api/dossiers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }, // ✅ cần thiết
+      credentials: "include",
+      body: JSON.stringify({ tokenBXD, tokenBYT }), // ✅ gửi lên backend
+    });
+
+    if (res.status === 401) {
+      // backend sẽ trả needToken/unauthorized khi token hết hạn
+      const j = await res.json().catch(() => ({}));
+      return {
+        boXayDung: createEmptyMinistry(),
+        boYTe: createEmptyMinistry(),
+        error: j?.error || "Cần nhập token hoặc token đã hết hạn.",
+        unauthorized: true,
+        needToken: true,
+      };
+    }
+
+    const data = await res.json().catch(() => ({}));
+
     if (!res.ok) {
       return {
         boXayDung: createEmptyMinistry(),
         boYTe: createEmptyMinistry(),
-        error: "Lỗi kết nối backend.",
+        error: data?.error || "Lỗi kết nối backend.",
         networkError: true,
       };
     }
 
-    const data = await res.json();
     return {
       boXayDung: data?.boXayDung || createEmptyMinistry(),
       boYTe: data?.boYTe || createEmptyMinistry(),

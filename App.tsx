@@ -113,11 +113,7 @@ const App: React.FC = () => {
     setBoYTe({ dangXuLy: [], gap: [] });
     setHasFetched(false);
 
-    const result: FetchResult = await fetchAllDossiers(
-      undefined,
-      undefined,
-      currentMock
-    );
+    const result: FetchResult = await fetchAllDossiers(currentMock);
 
     // token hết hạn/invalid hoặc unauthorized => mở token modal
     if (result?.needToken || result?.unauthorized) {
