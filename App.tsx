@@ -48,7 +48,6 @@ const App: React.FC = () => {
   const [showLogin, setShowLogin] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
-  const [tokenSaving, setTokenSaving] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [tokenError, setTokenError] = useState("");
   const [tokenSaving, setTokenSaving] = useState(false);
