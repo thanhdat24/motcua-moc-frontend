@@ -487,7 +487,7 @@ const App: React.FC = () => {
         </div>
 
         {/* Tab Content */}
-        {hasFetched && !loading && !errorMsg && (
+        {!loading && !errorMsg && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {activeTab === "BXD" ? (
               <div className="space-y-6">
