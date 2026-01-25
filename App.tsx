@@ -90,15 +90,16 @@ const App: React.FC = () => {
     }
   };
 
-  const checkHasToken = async (): Promise<boolean> => {
-    try {
-      const res = await fetch("/api/token", { credentials: "include" });
-      if (!res.ok) return false;
-      const j = await res.json().catch(() => ({}));
-      return !!j?.hasToken;
-    } catch {
-      return false;
-    }
+  const normalizeBearer = (t: string) => {
+    const v = (t || "").trim();
+    if (!v) return "";
+    return v.toLowerCase().startsWith("bearer ") ? v : `Bearer ${v}`;
+  };
+
+  const checkHasTokenLocal = () => {
+    const tokenBXD = normalizeBearer(localStorage.getItem(LS_TOKEN_BXD) || "");
+    const tokenBYT = normalizeBearer(localStorage.getItem(LS_TOKEN_BYT) || "");
+    return { tokenBXD, tokenBYT, hasBoth: !!tokenBXD && !!tokenBYT };
   };
 
   // -------- Fetch data (GIỮ CŨ VỀ XỬ LÝ TRẠNG THÁI) --------
@@ -155,9 +156,9 @@ const App: React.FC = () => {
         return;
       }
 
-      const hasToken = await checkHasToken();
-      if (!hasToken) {
-        setTargetMinistry("BXD");
+      const { hasBoth } = checkHasTokenLocal();
+      if (!hasBoth) {
+        setTargetMinistry("BXD"); // bắt nhập BXD trước
         setShowTokenModal(true);
         return;
       }
@@ -190,8 +191,8 @@ const App: React.FC = () => {
       setLoginLoading(false);
 
       // Sau login: check token
-      const hasToken = await checkHasToken();
-      if (!hasToken) {
+      const { hasBoth } = checkHasTokenLocal();
+      if (!hasBoth) {
         setTargetMinistry("BXD");
         setShowTokenModal(true);
       } else {
