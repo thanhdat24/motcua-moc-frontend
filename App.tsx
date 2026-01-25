@@ -587,12 +587,12 @@ const App: React.FC = () => {
             <div className="overflow-y-auto space-y-6 px-1 pb-2">
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-900/30">
-                  <Server className="w-5 h-5" />
+                  <ICONS.Server className="w-5 h-5" />
                   <span className="font-semibold text-sm">Kết nối Backend</span>
                 </div>
 
                 <div className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
-                  <Info className="w-4 h-4 mt-0.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
+                  <ICONS.Info className="w-4 h-4 mt-0.5 text-blue-500 dark:text-blue-400 flex-shrink-0" />
                   <span>
                     Backend chạy chung Vercel API Routes:{" "}
                     <strong className="font-mono text-gray-700 dark:text-gray-300">
@@ -613,7 +613,7 @@ const App: React.FC = () => {
                   }}
                   className="w-full flex justify-center items-center py-2.5 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
                 >
-                  <CheckCircle className="w-4 h-4 mr-2" />
+                  <ICONS.CheckCircle className="w-4 h-4 mr-2" />
                   Nhập / cập nhật token
                 </button>
               </div>
@@ -623,7 +623,7 @@ const App: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-yellow-800 dark:text-yellow-400">
-                    <Database className="w-5 h-5" />
+                    <ICONS.Database className="w-5 h-5" />
                     <span className="font-semibold text-sm">Chế độ Demo</span>
                   </div>
 
