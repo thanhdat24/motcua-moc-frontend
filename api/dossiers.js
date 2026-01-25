@@ -24,7 +24,11 @@ export default async function handler(req, res) {
   }
 
   // Nhận token từ FE (body)
-  const { tokenBXD, tokenBYT } = req.body || {};
+  const { tokenBXD, tokenBYT } = {
+    tokenBXD: localStorage.getItem("TOKEN_BXD") || "",
+    tokenBYT: localStorage.getItem("TOKEN_BYT") || "",
+  };
+
   if (!tokenBXD || !tokenBYT) {
     return res.status(401).json({ error: "Missing token", needToken: true });
   }
