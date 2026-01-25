@@ -17,10 +17,28 @@ const BASE_BXD = "https://motcuabxd.moc.gov.vn";
 const safeText = (v: any) => (v == null ? "" : String(v));
 const trim = (v: any) => safeText(v).trim();
 
+/**
+ * Convert timezone like +0700 -> +07:00 so Date() can parse reliably.
+ * Also handles -0700.
+ */
+const normalizeIsoTz = (s?: string) => {
+  const v = trim(s);
+  if (!v) return "";
+  // Replace trailing +HHmm or -HHmm with +HH:MM / -HH:MM
+  return v.replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
+};
+
+const toDate = (iso?: string) => {
+  const v = normalizeIsoTz(iso);
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+};
+
 const fmtDateVi = (iso?: string) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
+  const d = toDate(iso);
+  if (!d) return "-";
   return d.toLocaleString("vi-VN", {
     year: "numeric",
     month: "2-digit",
@@ -30,19 +48,34 @@ const fmtDateVi = (iso?: string) => {
   });
 };
 
-const calcDaysLeft = (appointmentIso?: string) => {
-  if (!appointmentIso) return null;
-  const target = new Date(appointmentIso).getTime();
-  if (Number.isNaN(target)) return null;
+/**
+ * Days difference (ceil) between dueDate and now (local).
+ * >0: remaining days
+ * 0: today
+ * <0: overdue days
+ */
+const calcDaysDiffFromNow = (iso?: string) => {
+  const d = toDate(iso);
+  if (!d) return null;
   const now = Date.now();
-  return Math.ceil((target - now) / (24 * 60 * 60 * 1000));
+  return Math.ceil((d.getTime() - now) / (24 * 60 * 60 * 1000));
 };
 
-const daysLeftLabel = (daysLeft: number | null) => {
-  if (daysLeft == null) return "-";
-  if (daysLeft > 0) return `Còn ${daysLeft} ngày`;
-  if (daysLeft === 0) return "Hôm nay";
-  return `Quá hạn ${Math.abs(daysLeft)} ngày`;
+const deadlineLabel = (daysDiff: number | null) => {
+  if (daysDiff == null) return "-";
+  if (daysDiff > 0) return `Còn hạn (còn ${daysDiff} ngày)`;
+  if (daysDiff === 0) return "Hôm nay";
+  return `Trễ hạn (trễ ${Math.abs(daysDiff)} ngày)`;
+};
+
+const deadlineBadgeClass = (daysDiff: number | null) => {
+  if (daysDiff == null)
+    return "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700";
+  if (daysDiff < 0)
+    return "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40";
+  if (daysDiff <= 2)
+    return "bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-900/40";
+  return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-900/40";
 };
 
 const getOwnerName = (dossier: any) => {
@@ -72,27 +105,30 @@ const getStatusName = (dossier: any) => {
   );
 };
 
+const getDueDateFromCurrentTask = (dossier: any) => {
+  // ưu tiên currentTask[0].dueDate
+  const due = dossier?.currentTask?.[0]?.dueDate;
+  return trim(due) || "";
+};
+
 /**
- * ✅ Lọc theo yêu cầu:
- * - CHỈ áp dụng cho BXD
+ * ✅ Lọc theo yêu cầu BXD:
  * - procedure.code !== "1.013225"
  * - statusName === "Đang xử lý"
+ * (BYT giữ nguyên)
  */
 const filterByMinistry = (ministry: Ministry, list: any[]) => {
   const arr = Array.isArray(list) ? list : [];
   if (ministry !== "BXD") return arr;
 
   return arr.filter((x) => {
-    const procCode = trim(x?.procedure?.code); // ví dụ "1.013225"
+    const procCode = trim(x?.procedure?.code);
     if (procCode === "1.013225") return false;
 
     const status =
       trim(x?.dossierStatus?.name) || trim(x?.dossierTaskStatus?.name);
 
-    // Chỉ lấy trạng thái "Đang xử lý"
-    if (status !== "Đang xử lý") return false;
-
-    return true;
+    return status === "Đang xử lý";
   });
 };
 
@@ -143,9 +179,15 @@ type Row = {
   code: string;
   url: string;
   procedureName: string;
+
+  // Ngày hẹn trả (appointmentDate)
   appointmentText: string;
-  daysLeftText: string;
-  daysLeftValue: number | null;
+
+  // Thời hạn dựa theo currentTask[0].dueDate
+  dueDateText: string;
+  dueDaysDiff: number | null;
+  deadlineText: string;
+
   ownerName: string;
   statusName: string;
 };
@@ -161,17 +203,24 @@ const DossierTable: React.FC<Props> = ({
 
     return filtered.map((x: any) => {
       const code = trim(x?.code) || trim(x?.id) || "-";
+
       const appointmentIso = trim(x?.appointmentDate);
-      const daysLeftValue = calcDaysLeft(appointmentIso);
+      const appointmentText = fmtDateVi(appointmentIso) || "-";
+
+      const dueIso = getDueDateFromCurrentTask(x);
+      const dueDateText = dueIso ? fmtDateVi(dueIso) : "-";
+      const dueDaysDiff = dueIso ? calcDaysDiffFromNow(dueIso) : null;
+      const deadlineText = deadlineLabel(dueDaysDiff);
 
       return {
         key: trim(x?.id) || code,
         code,
         url: buildSearchUrl(ministry, x),
         procedureName: getProcedureName(x),
-        appointmentText: fmtDateVi(appointmentIso) || "-",
-        daysLeftText: daysLeftLabel(daysLeftValue),
-        daysLeftValue,
+        appointmentText,
+        dueDateText,
+        dueDaysDiff,
+        deadlineText,
         ownerName: getOwnerName(x),
         statusName: getStatusName(x),
       };
@@ -196,6 +245,12 @@ const DossierTable: React.FC<Props> = ({
             {rows.length} hồ sơ
           </span>
         </div>
+
+        {/* Gợi ý chỗ ghi chú cho dễ hiểu */}
+        <div className="hidden md:block text-[11px] text-gray-500 dark:text-gray-400">
+          <span className="font-semibold">Thời hạn</span> tính theo{" "}
+          <span className="font-mono">currentTask[0].dueDate</span>
+        </div>
       </div>
 
       {rows.length === 0 ? (
@@ -216,9 +271,12 @@ const DossierTable: React.FC<Props> = ({
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
                   Ngày hẹn trả
                 </th>
+
+                {/* ✅ Cột mới */}
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Còn lại
+                  Thời hạn
                 </th>
+
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
                   Chủ hồ sơ
                 </th>
@@ -254,21 +312,22 @@ const DossierTable: React.FC<Props> = ({
                     {r.appointmentText}
                   </td>
 
+                  {/* ✅ Cột “Thời hạn” (dueDate + trạng thái còn hạn/trễ hạn) */}
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <span
-                      className={[
-                        "text-xs font-bold px-2 py-1 rounded-full border",
-                        r.daysLeftValue == null
-                          ? "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
-                          : r.daysLeftValue < 0
-                          ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-900/40"
-                          : r.daysLeftValue <= 2
-                          ? "bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-900/40"
-                          : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-900/40",
-                      ].join(" ")}
-                    >
-                      {r.daysLeftText}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-gray-600 dark:text-gray-300">
+                        {r.dueDateText}
+                      </span>
+                      <span
+                        className={[
+                          "text-[11px] font-bold px-2 py-1 rounded-full border inline-flex w-fit",
+                          deadlineBadgeClass(r.dueDaysDiff),
+                        ].join(" ")}
+                        title="So sánh currentTask[0].dueDate với ngày hiện tại"
+                      >
+                        {r.deadlineText}
+                      </span>
+                    </div>
                   </td>
 
                   <td className="px-4 py-3 whitespace-nowrap">{r.ownerName}</td>
