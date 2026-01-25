@@ -1,0 +1,7 @@
+{
+  "name": "Quản Lý Token Dịch Vụ Công",
+  "description": "Bảng điều khiển cập nhật token cho Bot Telegram Dịch Vụ Công Cần Thơ.",
+  "requestFramePermissions": [
+    "clipboard-read"
+  ]
+}
