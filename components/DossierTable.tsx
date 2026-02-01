@@ -108,6 +108,8 @@ const getStatusName = (dossier: any) =>
 const getDueDateFromCurrentTask = (dossier: any) =>
   trim(dossier?.currentTask?.[0]?.dueDate) || "";
 
+const getAssigneeFromCurrentTask = (dossier: any) =>
+  trim(dossier?.currentTask?.[0]?.assignee?.fullname) || "";
 /**
  * ✅ Lọc theo yêu cầu BXD:
  * - procedure.code !== "1.013225"
@@ -179,7 +181,7 @@ type Row = {
   dueDateText: string;
   deadlineText: string;
   deadlineInfo: ReturnType<typeof calcTimeDiffDHMS>;
-
+  assigneeName: string;
   ownerName: string;
   statusName: string;
 };
@@ -266,6 +268,7 @@ const DossierTable: React.FC<Props> = ({
         dueDateText,
         deadlineText,
         deadlineInfo: info,
+        assigneeName: getAssigneeFromCurrentTask(x),
         ownerName: getOwnerName(x),
         statusName: getStatusName(x),
       };
@@ -359,6 +362,11 @@ const DossierTable: React.FC<Props> = ({
                         <span className="text-xs text-gray-600 dark:text-gray-300">
                           Hạn xử lý: {r.dueDateText}
                         </span>
+
+                        <span className="text-xs text-gray-600 dark:text-gray-300">
+                          Người xử lý: {r.assigneeName ?? "—"}
+                        </span>
+
                         <span
                           className={[
                             "text-[11px] font-bold px-2 py-1 rounded-full border inline-flex w-fit",
@@ -424,6 +432,11 @@ const DossierTable: React.FC<Props> = ({
                         <span className="text-xs text-gray-600 dark:text-gray-300">
                           Hạn xử lý: {r.dueDateText}
                         </span>
+
+                        <span className="text-xs text-gray-600 dark:text-gray-300">
+                          Người xử lý: {r.assigneeName ?? "—"}
+                        </span>
+
                         <span
                           className={[
                             "text-[11px] font-bold px-2 py-1 rounded-full border inline-flex w-fit",
