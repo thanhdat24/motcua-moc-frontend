@@ -238,7 +238,7 @@ const DossierTable: React.FC<Props> = ({
 }) => {
   const rows: Row[] = useMemo(() => {
     const filtered = filterByMinistry(ministry, data);
-
+    console.log("data", data);
     return filtered.map((x: any) => {
       const code = trim(x?.code) || trim(x?.id) || "-";
 
